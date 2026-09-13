@@ -10,7 +10,7 @@
     "trends": "node bin/forge.js trends",
     "run": "node bin/forge.js run",
     "status": "node bin/forge.js status",
-    "test": "node --test"
+    "test": "node --test test/*.test.js"
   },
   "keywords": ["automation", "agents", "llm", "trend-analysis", "code-generation", "pipeline"],
   "dependencies": {},

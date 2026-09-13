@@ -4,6 +4,7 @@ import { getTrends } from '../src/trends.js';
 import { ideate } from '../src/ideate.js';
 import { runDaily } from '../src/pipeline.js';
 import { runGate } from '../src/gate.js';
+import { resumeBuild } from '../src/build.js';
 import { preflight } from '../src/preflight.js';
 import { publishProject, writeManifest } from '../src/publish.js';
 import { load, recordProject, findProject, STATUS } from '../src/store.js';
@@ -19,6 +20,7 @@ forge — mines daily engineering trends and builds complete, tested projects
   forge review              List projects waiting for your review
   forge show <name>         Print one project's gate report and file listing
   forge gate <name>         Re-run the quality gate on a built project
+  forge continue <name>     Give an unfinished build another session
   forge ship <name>         Publish a reviewed project to GitHub
   forge doctor              Check this machine can run a build
   forge status              Ledger summary
@@ -122,6 +124,28 @@ async function cmdGate(name) {
   console.log(JSON.stringify(gate, null, 2));
 }
 
+/**
+ * Hand an unfinished build another session. Ambitious projects routinely spend
+ * the whole budget on the core and its tests, and the brief writes the README
+ * last — so a timeout often lands on something nearly complete.
+ */
+async function cmdContinue(name) {
+  const project = findProject(name);
+  if (!project?.dir || !existsSync(project.dir)) {
+    log.error(`no built project named "${name}"`);
+    process.exitCode = 1;
+    return;
+  }
+
+  await resumeBuild(project, project.dir, project.gate?.blocking);
+
+  const gate = await runGate(project.dir, project);
+  recordProject({ id: project.id, gate, status: gate.passed ? STATUS.REVIEW : STATUS.REJECTED });
+
+  if (gate.passed) log.ok(`${name} now passes — review it, then: forge ship ${name}`);
+  else log.error(`${name} still rejected:\n  ${gate.blocking.join('\n  ')}`);
+}
+
 async function cmdShip(name, flags) {
   const project = findProject(name);
   if (!project) { log.error(`no project named "${name}"`); process.exitCode = 1; return; }
@@ -201,6 +225,7 @@ async function main() {
     case 'review': return cmdReview(flags);
     case 'show': return cmdShow(positional[1]);
     case 'gate': return cmdGate(positional[1]);
+    case 'continue': return void (await cmdContinue(positional[1]));
     case 'ship': return cmdShip(positional[1], flags);
     case 'doctor': return void (await cmdDoctor());
     case 'status': return cmdStatus(flags);
