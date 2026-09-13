@@ -17,11 +17,21 @@ what gets published.
 
 ## Hard constraints
 
-- **No network access.** No `curl`, no `fetch` at runtime, no API keys, no
-  external services, no database. Generate any sample data with your own code.
-- **Dependencies: as close to zero as you can manage.** Standard library
-  first. Every dependency you add is a dependency a reviewer will question.
-- **Everything must run offline** with a single documented command.
+- **Stay inside this directory.** Everything you create, read or run lives
+  here. Do not read, search or borrow from anywhere else on this machine —
+  other projects on this disk are private and unrelated. If you need something,
+  install it or write it.
+- **You may install packages** (`npm install`, `pip`, `cargo add`) — the
+  network is available for that. A TypeScript project installing `typescript`
+  as a devDependency is entirely normal.
+- **The finished project must not need the network to run.** No API calls at
+  runtime, no API keys, no external services, no database. Generate any sample
+  data with your own code.
+- **Runtime dependencies: as close to zero as you can manage.** Standard
+  library first. Build and test tooling is fine; every *runtime* dependency is
+  one a reviewer will question.
+- **A stranger must be able to clone and run it** with the documented commands
+  and nothing else.
 - Do not initialise git, do not create a remote, do not commit. That is
   handled outside this session.
 

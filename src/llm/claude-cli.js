@@ -2,17 +2,22 @@ import { spawn } from 'node:child_process';
 import { log } from '../log.js';
 
 /**
- * Commands a build agent is allowed to run. Deliberately narrow: package
- * managers, test runners and local file inspection. Nothing that reaches the
- * network, mutates anything outside the project directory, or touches git
- * remotes — publishing is forge's job, never the model's.
+ * Tools a build agent is allowed: writing its own files, and the package
+ * managers and test runners it needs to prove they work. Nothing that touches
+ * git remotes — publishing is forge's job, never the model's.
+ *
+ * Glob and Grep are deliberately absent. They take an explicit `path` and
+ * honour no workspace boundary, so an agent that cannot find a dependency uses
+ * them to search the whole disk: an early run went hunting for a TypeScript
+ * compiler and started reading an unrelated private project's node_modules.
+ * A project being built from an empty directory has nothing to search, so
+ * removing them costs nothing and closes the escape hatch.
  */
 const BUILD_TOOLS = [
-  'Read', 'Write', 'Edit', 'Glob', 'Grep',
+  'Read', 'Write', 'Edit',
   'Bash(npm:*)', 'Bash(npx:*)', 'Bash(node:*)',
   'Bash(python3:*)', 'Bash(pip3:*)', 'Bash(uv:*)', 'Bash(pytest:*)',
-  'Bash(cargo:*)', 'Bash(mkdir:*)', 'Bash(ls:*)', 'Bash(cat:*)',
-  'Bash(head:*)', 'Bash(tail:*)', 'Bash(wc:*)', 'Bash(sed:*)', 'Bash(grep:*)',
+  'Bash(cargo:*)', 'Bash(mkdir:*)', 'Bash(ls:*)', 'Bash(wc:*)',
   'Bash(chmod:*)', 'Bash(cp:*)', 'Bash(mv:*)', 'Bash(touch:*)', 'Bash(echo:*)',
 ];
 
