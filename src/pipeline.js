@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { getTrends } from './trends.js';
 import { ideate } from './ideate.js';
 import { buildProject } from './build.js';
@@ -61,7 +63,18 @@ export async function runDaily({ target = config.projectsPerDay, dryRun = false 
       build = await buildProject(spec);
     } catch (err) {
       log.error(`build failed for ${spec.name}: ${err.message}`);
-      recordProject({ id, status: STATUS.REJECTED, error: err.message });
+      // Record the directory even on failure. A timeout usually leaves a nearly
+      // complete project on disk, and without the path `forge continue` cannot
+      // find the work to finish it.
+      const partial = join(config.workspace, spec.name);
+      const salvageable = existsSync(partial);
+      recordProject({
+        id,
+        status: STATUS.REJECTED,
+        error: err.message,
+        ...(salvageable ? { dir: partial } : {}),
+      });
+      if (salvageable) log.info(`partial build kept — finish it with: forge continue ${spec.name}`);
       rejected.push({ spec, reason: `build error: ${err.message}` });
       continue;
     }

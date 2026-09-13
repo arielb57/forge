@@ -33,8 +33,15 @@ const DEFAULTS = {
    */
   topicCooldownDays: 45,
 
-  /** Wall-clock budget for a single project build, in minutes. */
-  buildTimeoutMinutes: 40,
+  /**
+   * Wall-clock budget for a single project build.
+   *
+   * Measured, not guessed: a 24-file project with 131 tests and a 2900-word
+   * README was cut off at 40 minutes having already finished the work — the
+   * agent was wrapping up when SIGTERM arrived. `forge continue` recovers that
+   * case, but the budget should not routinely need it.
+   */
+  buildTimeoutMinutes: 55,
 
   /** LLM driver: 'claude-cli' (subscription) or 'anthropic-api' (API key). */
   driver: process.env.FORGE_DRIVER || 'claude-cli',
