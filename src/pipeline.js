@@ -5,6 +5,7 @@ import { buildProject } from './build.js';
 import { runGate } from './gate.js';
 import { writeManifest } from './publish.js';
 import { recordProject, recordRun, STATUS } from './store.js';
+import { preflight } from './preflight.js';
 import { config } from './config.js';
 import { log } from './log.js';
 
@@ -18,6 +19,10 @@ export async function runDaily({ target = config.projectsPerDay, dryRun = false 
   const startedAt = Date.now();
   log.blank();
   log.step(`run ${runId} — target ${target} project(s)`);
+
+  // Fail here, legibly, rather than three quarters of the way through a build
+  // with an ENOSPC from inside npm that nobody will read until tomorrow.
+  const environment = await preflight();
 
   const { trends, health, totalItems } = await getTrends();
   if (trends.length === 0) {
@@ -91,6 +96,9 @@ export async function runDaily({ target = config.projectsPerDay, dryRun = false 
     trends: trends.length,
     totalItems,
     sources: health,
+    // Kept so a failed run can be diagnosed later without guessing what the
+    // machine looked like at the time.
+    environment: { freeGb: Number(environment.free.toFixed(1)), toolchains: environment.available },
     built: passed.length + rejected.length,
     passed: passed.length,
     durationMin,

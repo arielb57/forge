@@ -4,6 +4,7 @@ import { getTrends } from '../src/trends.js';
 import { ideate } from '../src/ideate.js';
 import { runDaily } from '../src/pipeline.js';
 import { runGate } from '../src/gate.js';
+import { preflight } from '../src/preflight.js';
 import { publishProject, writeManifest } from '../src/publish.js';
 import { load, recordProject, findProject, STATUS } from '../src/store.js';
 import { config } from '../src/config.js';
@@ -19,6 +20,7 @@ forge — mines daily engineering trends and builds complete, tested projects
   forge show <name>         Print one project's gate report and file listing
   forge gate <name>         Re-run the quality gate on a built project
   forge ship <name>         Publish a reviewed project to GitHub
+  forge doctor              Check this machine can run a build
   forge status              Ledger summary
   forge help
 
@@ -173,6 +175,21 @@ forge status
   }
 }
 
+async function cmdDoctor() {
+  try {
+    const env = await preflight({ requirePublisher: true });
+    console.log(`
+Ready to build.
+  free space    ${env.free.toFixed(1)} GB
+  toolchains    ${Object.entries(env.available).filter(([, ok]) => ok).map(([k]) => k).join(', ') || 'none'}
+  driver        ${config.driver} (${config.model})
+`);
+  } catch {
+    console.log('\nNot ready — fix the problems above and run `forge doctor` again.\n');
+    process.exitCode = 1;
+  }
+}
+
 async function main() {
   const { flags, positional } = parseArgs(process.argv.slice(2));
   const command = positional[0] || 'help';
@@ -185,6 +202,7 @@ async function main() {
     case 'show': return cmdShow(positional[1]);
     case 'gate': return cmdGate(positional[1]);
     case 'ship': return cmdShip(positional[1], flags);
+    case 'doctor': return void (await cmdDoctor());
     case 'status': return cmdStatus(flags);
     case 'help': case '--help': case '-h': return void console.log(HELP);
     default:

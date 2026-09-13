@@ -94,7 +94,13 @@ forge ship <name>         # create the repo and push — only after you have rea
 
 This is deliberate, for two reasons. An unattended process that writes code and pushes it to the public internet is a bad thing to build regardless of how good the gate is. And more practically: a repository you have not read is a repository you cannot defend when somebody asks you about it.
 
-The build agent runs under a narrow allowlist — file edits, package managers, test runners — with no network access, no git, and no ability to reach outside its own project directory. Commits are split into logical stages (scaffold → core → tests → docs) because that is the order the work happens in. They are never backdated; faking a development history is falsifying a record.
+The build agent runs under a narrow allowlist: it can write files and run package managers and test runners, and nothing else. It has no git access — publishing is forge's job, not the model's.
+
+It also has no filesystem search tools, which is not an oversight. `Glob` and `Grep` take an explicit path and honour no workspace boundary; the first real run proved it, when an agent that could not find a TypeScript compiler went looking across the whole disk and started reading an unrelated private project. A project being built from an empty directory has nothing to search, so removing them costs nothing.
+
+The agent may install packages during a build — that is ordinary — but the finished project must run with no network at all.
+
+Commits are split into logical stages (scaffold → core → tests → docs) because that is the order the work happens in. They are never backdated; faking a development history is falsifying a record.
 
 ## Install
 
@@ -120,6 +126,7 @@ forge show <name>         # one project's full gate report
 forge gate <name>         # re-run the gate after editing by hand
 forge ship <name>         # publish to GitHub
 
+forge doctor              # can this machine run a build?
 forge status              # ledger summary
 ```
 
