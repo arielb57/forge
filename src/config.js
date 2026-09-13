@@ -24,8 +24,11 @@ const DEFAULTS = {
   /** Where generated repositories are built and kept. */
   workspace: join(ROOT, 'workspace'),
 
-  /** Ledger + dedup index. */
-  dataDir: join(ROOT, 'data'),
+  /**
+   * Ledger + dedup index. Overridable so the test suite can exercise the store
+   * against a throwaway directory instead of the real ledger.
+   */
+  dataDir: process.env.FORGE_DATA_DIR || join(ROOT, 'data'),
 
   /**
    * A topic that shipped less than this many days ago is not eligible again.
