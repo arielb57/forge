@@ -91,11 +91,21 @@ State what is true and let it stand.
 
 ## Order of work
 
+You have up to about 45 minutes. Pace yourself against that, and prefer a
+smaller thing that is complete to a larger thing that is not.
+
 1. Design the core first. Write it, then test it hard, before anything else.
 2. Build the CLI or public API around the tested core.
-3. Benchmark, if the spec calls for one, and record real measured numbers.
-4. Write the README last, once you know what is actually true about the code.
+3. **Write the README now**, as soon as the core works and is tested — not at
+   the end. A run that overruns should leave a documented project behind, not
+   an undocumented one. You can refine it later if time allows.
+4. Benchmark, if the spec calls for one, and record real measured numbers.
 5. Run the full test suite one final time and fix anything red.
+
+Declare nothing you have not built. If `Cargo.toml` names two binaries or
+`package.json` names a script, the file it points at must exist before you move
+on — a manifest referring to a missing file fails the build for everyone who
+clones it.
 
 Do not report success on a suite you have not just watched pass.
 
