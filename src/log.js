@@ -24,8 +24,13 @@ function fileSink() {
 
 function write(level, symbol, parts) {
   const message = parts.map((p) => (typeof p === 'string' ? p : JSON.stringify(p))).join(' ');
-  const stamp = new Date().toISOString();
-  console.log(`${paint('dim', stamp.slice(11, 19))} ${paint(level, symbol)} ${message}`);
+  const now = new Date();
+  const stamp = now.toISOString();
+  // The console shows local time — a run started at 09:00 should read 09:00 to
+  // the person watching it. The log file keeps UTC so timestamps stay sortable
+  // and unambiguous across a clock change.
+  const clock = now.toLocaleTimeString('en-GB', { hour12: false });
+  console.log(`${paint('dim', clock)} ${paint(level, symbol)} ${message}`);
   const sink = fileSink();
   if (sink) {
     try {

@@ -1,7 +1,8 @@
-import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, extname, relative } from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { countTestSignals, findPlaceholders as scanPlaceholders, assessReadmeText, judgeTests } from './analyze.js';
 import { log } from './log.js';
 
 const exec = promisify(execFile);
@@ -93,9 +94,9 @@ async function runTests(dir, toolchain) {
 }
 
 /**
- * Tests that pass mean nothing if they assert nothing. This looks for the
- * shape of a real suite: enough cases, enough assertions, and assertions that
- * are not merely comparing two literals.
+ * Aggregate the per-file signals across the whole suite. The judgement itself
+ * lives in analyze.js, where it is tested against the exact code shapes it has
+ * to catch.
  */
 function assessTests(dir) {
   const files = walk(dir).filter((f) => {
@@ -106,32 +107,19 @@ function assessTests(dir) {
     );
   });
 
-  if (files.length === 0) return { cases: 0, assertions: 0, trivial: 0, files: 0 };
-
-  let cases = 0;
-  let assertions = 0;
-  let trivial = 0;
-
+  const total = { cases: 0, assertions: 0, trivial: 0, files: files.length };
   for (const file of files) {
     let text;
     try {
       text = readFileSync(file.path, 'utf8');
     } catch { continue; }
-
-    cases += (text.match(/\b(?:it|test|def test_|#\[test\]|describe)\s*[(\w]/g) || []).length;
-    assertions += (text.match(/\b(?:assert\w*|expect|should)\s*[(!.]/g) || []).length;
-    // assert_eq!(2, 2) / assertEqual(1, 1) / expect(true).toBe(true)
-    trivial += (text.match(/assert\w*[(!]\s*(\d+|true|false|"[^"]*")\s*,?\s*(\d+|true|false|"[^"]*")?\s*\)/g) || [])
-      .filter((m) => {
-        const nums = m.match(/\d+|true|false/g) || [];
-        return nums.length >= 2 && nums[0] === nums[1];
-      }).length;
+    const counts = countTestSignals(text);
+    total.cases += counts.cases;
+    total.assertions += counts.assertions;
+    total.trivial += counts.trivial;
   }
-
-  return { cases, assertions, trivial, files: files.length };
+  return total;
 }
-
-const PLACEHOLDER_RE = /\b(TODO|FIXME|XXX|HACK)\b|NotImplementedError|todo!\(\)|unimplemented!\(\)|throw new Error\(['"]not implemented/i;
 
 function findPlaceholders(dir) {
   const hits = [];
@@ -141,9 +129,7 @@ function findPlaceholders(dir) {
     try {
       text = readFileSync(file.path, 'utf8');
     } catch { continue; }
-    text.split('\n').forEach((line, i) => {
-      if (PLACEHOLDER_RE.test(line)) hits.push(`${file.rel}:${i + 1} ${line.trim().slice(0, 90)}`);
-    });
+    for (const hit of scanPlaceholders(text)) hits.push(`${file.rel}:${hit.line} ${hit.text}`);
   }
   return hits;
 }
@@ -151,21 +137,7 @@ function findPlaceholders(dir) {
 function assessReadme(dir) {
   const path = ['README.md', 'readme.md', 'Readme.md'].map((n) => join(dir, n)).find(existsSync);
   if (!path) return { exists: false };
-
-  const text = readFileSync(path, 'utf8');
-  const lower = text.toLowerCase();
-  const headings = (text.match(/^#{1,3}\s+.+$/gm) || []).length;
-
-  return {
-    exists: true,
-    words: text.split(/\s+/).filter(Boolean).length,
-    headings,
-    hasCodeBlock: /```/.test(text),
-    // A README that never explains the approach is a README nobody learns from.
-    explainsApproach: /how it works|approach|algorithm|architecture|design|implementation/i.test(text),
-    hasLimitations: /limitation|not supported|does not|caveat|known issue/i.test(lower),
-    hasUsage: /usage|install|getting started|quick ?start/i.test(lower),
-  };
+  return { exists: true, ...assessReadmeText(readFileSync(path, 'utf8')) };
 }
 
 export async function runGate(dir, spec) {
@@ -188,12 +160,7 @@ export async function runGate(dir, spec) {
   }
 
   const suite = assessTests(dir);
-  if (suite.files === 0) blocking.push('no test files found');
-  else if (suite.cases < 3) blocking.push(`only ${suite.cases} test case(s) — the suite does not exercise the core`);
-  else if (suite.assertions < 6) blocking.push(`only ${suite.assertions} assertion(s) across ${suite.cases} cases`);
-  if (suite.trivial > 0 && suite.trivial >= suite.assertions * 0.3) {
-    blocking.push(`${suite.trivial} of ${suite.assertions} assertions compare a literal to itself`);
-  }
+  blocking.push(...judgeTests(suite));
 
   const placeholders = findPlaceholders(dir);
   if (placeholders.length > 0) {

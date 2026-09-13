@@ -34,7 +34,7 @@ const DEFAULTS = {
   topicCooldownDays: 45,
 
   /** Wall-clock budget for a single project build, in minutes. */
-  buildTimeoutMinutes: 25,
+  buildTimeoutMinutes: 40,
 
   /** LLM driver: 'claude-cli' (subscription) or 'anthropic-api' (API key). */
   driver: process.env.FORGE_DRIVER || 'claude-cli',
