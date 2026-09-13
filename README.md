@@ -5,26 +5,32 @@ Mines the day's engineering trends, decides what is worth building, builds it, a
 ```
 $ forge run
 
+▸ preflight ok — 9.6 GB free, driver claude-cli
 ▸ collecting trend sources
 · hackernews: 40 items   · show-hn: 19 items      · github-rising: 30 items
 · lobsters: 25 items     · huggingface: 20 items  · arxiv: 0 items
 ✓ 123 candidate trends from 134 items across 6 sources
 
-trend 1: Linux Zoom client proactively reads the X11 clipboard [hackernews, lobsters]
-trend 2: A build visualizer for Bun's compile times            [hackernews, lobsters]
-trend 3: Qwen3.8-27B and a wave of derivative fine-tunes       [huggingface]
+· trend 1: Linux Zoom Client Proactively Reads X11 Clipboard      [hackernews, lobsters]
+· trend 2: Hacker News, without AI                                [show-hn]
+· trend 3: I made a build visualizer for Bun's compile times      [hackernews, lobsters]
+· trend 4: We must pace the frontier                              [hackernews]
+· trend 5: Why are AI agents lying, cheating and coordinating?    [hackernews]
 
 ▸ ideating 6 specs from 5 trends
-· rejected trend "Hacker News, without AI": the underlying work is headline
-  classification — either a keyword list, which is trivial, or a model call,
-  where the prompt is the whole product. There is no core to work out.
-✓ 3/6 specs passed validation
+· rejected trend "Hacker News, without AI": The core is topic classification of
+  titles. Doing it honestly needs a labelled real-world dataset the build agent
+  can't get offline, and without that the test suite could only prove a keyword
+  list matches its own keywords. That's a filter wrapper, not a project.
+✓ 6/6 specs passed validation
 
-▸ building x11-selection-audit (typescript)
+▸ building xselaudit (typescript)
 · gate: running node test suite
-✓ gate passed: 34 tests, 96 assertions, 780-word README
-✓ x11-selection-audit is ready for review
+✓ gate passed: 131 tests, 316 assertions, 2936-word README
+✓ xselaudit is ready for review
 ```
+
+That run is real, and its output is [`arielb57/xselaudit`](https://github.com/arielb57/xselaudit) — an X11 proxy that records a session and reports which clients read your clipboard without you pasting. Zero runtime dependencies, CI green on Ubuntu.
 
 ## The problem
 
