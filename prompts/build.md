@@ -84,8 +84,15 @@ State what is true and let it stand.
 
 - `LICENSE` — MIT, copyright 2026 Ariel Belhamou.
 - `.gitignore` appropriate to the language.
-- `.github/workflows/ci.yml` — installs, tests, and lints on push and PR,
-  using a currently supported runner and language version.
+- `.github/workflows/ci.yml` — installs, tests, and lints on push and PR.
+  **Pin the toolchain used for linting.** Running a linter in `-D warnings`
+  mode against a floating `stable` means a new linter release breaks the build
+  with no change to the repository: CI becomes a clock rather than a check.
+  Tests may float; lints must not. For Rust, that is
+  `dtolnay/rust-toolchain@<exact version>` for the clippy and fmt job.
+- If you declare a minimum language version (`rust-version`, `engines.node`,
+  `requires-python`), give CI a job that actually checks it. An untested
+  minimum is a claim, not a fact.
 - Inline comments only where the code is genuinely non-obvious: explain *why*,
   never *what*. Do not narrate the code.
 
