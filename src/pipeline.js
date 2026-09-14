@@ -64,22 +64,16 @@ export async function runDaily({ target = config.projectsPerDay, dryRun = false 
     try {
       build = await buildProject(spec);
     } catch (err) {
-      if (err.rateLimited) {
-        log.error(`stopping the run: ${err.message}`);
-        recordProject({ id, status: STATUS.REJECTED, error: err.message });
-        rateLimited = err;
-        break;
-      }
-      log.error(`build failed for ${spec.name}: ${err.message}`);
-      // Record the directory even on failure. A timeout usually leaves a nearly
-      // complete project on disk, and without the path `forge continue` cannot
-      // find the work to finish it.
-      // Matches the sandbox layout in build.js; the older flat layout is the
-      // fallback so a partial build from before the change is still findable.
+      // Record the directory on every failure, a usage limit included. A
+      // stopped build usually leaves real work on disk — at minimum the README
+      // written as a design document — and without the path `forge continue`
+      // cannot find it. The limit branch used to break out before this ran.
+      // Nested is the sandbox layout in build.js; flat is the older layout.
       const nested = join(config.workspace, spec.name, 'repo');
       const flat = join(config.workspace, spec.name);
       const partial = existsSync(nested) ? nested : flat;
       const salvageable = existsSync(partial);
+
       recordProject({
         id,
         status: STATUS.REJECTED,
@@ -87,6 +81,13 @@ export async function runDaily({ target = config.projectsPerDay, dryRun = false 
         ...(salvageable ? { dir: partial } : {}),
       });
       if (salvageable) log.info(`partial build kept — finish it with: forge continue ${spec.name}`);
+
+      if (err.rateLimited) {
+        log.error(`stopping the run: ${err.message}`);
+        rateLimited = err;
+        break;
+      }
+      log.error(`build failed for ${spec.name}: ${err.message}`);
       rejected.push({ spec, reason: `build error: ${err.message}` });
       continue;
     }
