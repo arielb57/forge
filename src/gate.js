@@ -136,7 +136,7 @@ async function runLint(dir, toolchain) {
  * lives in analyze.js, where it is tested against the exact code shapes it has
  * to catch.
  */
-function assessTests(dir) {
+export function assessTests(dir) {
   // Every source file is scanned, not just ones named like tests. Rust puts
   // unit tests in `#[cfg(test)] mod tests` inside the module they cover, and
   // filtering by filename missed all of them — one project was credited with
