@@ -35,16 +35,24 @@ That run is real. What it and its successor produced:
 
 | project | language | what it does | tests | assertions |
 |---|---|---|---:|---:|
-| [xselaudit](https://github.com/arielb57/xselaudit) | TypeScript | Records X11 traffic through a proxy and reports which clients read the clipboard without a paste, classifying each read as user-initiated, proactive, self or unexplained | 132 | 322 |
-| [buildcrit](https://github.com/arielb57/buildcrit) | Rust | Causal profiling for Ninja builds: which edge, if faster, would actually shorten wall-clock time. Prunes with proven upper bounds and certifies when the pruned ranking equals the exhaustive one | 68 | 267 |
-| [elfcaps](https://github.com/arielb57/elfcaps) | Rust | Static audit of Linux binaries: which privacy-sensitive X11, input and capture APIs they can reach, and which bundled library brings each one in | 47 | 204 |
-| [includecost](https://github.com/arielb57/includecost) | Rust | Which C/C++ headers would delete the most preprocessed code if removed — the exclusive gain, proven by dominators, not the inclusive number every other tool reports | 38 | 154 |
-| [magmahunt](https://github.com/arielb57/magmahunt) | Rust | Finite-counterexample search for implications between equational laws over magmas, checked throughout against an independent naive implementation | 56 | 158 |
-| [hostsplit](https://github.com/arielb57/hostsplit) | TypeScript | Differential fuzzer that finds URLs whose hostname differs depending on who parses them — the shape of an SSRF or open-redirect bypass | 49 | 89 |
-| [homophone](https://github.com/arielb57/homophone) | Rust | Homophonic-substitution cipher solver by simulated annealing that measures its own recovery limits rather than asserting them | 40 | 130 |
-| [knockwire](https://github.com/arielb57/knockwire) | Python | Recovers signed interaction networks from knockout experiments and reports which edges the data cannot determine, instead of letting a regulariser invent them | 56 | 150 |
+| [xselaudit](https://github.com/arielb57/xselaudit) | TypeScript | Records X11 traffic through a proxy and reports which clients read the clipboard without a paste | 132 | 322 |
+| [buildcrit](https://github.com/arielb57/buildcrit) | Rust | Causal profiling for Ninja builds: which edge, if faster, would actually shorten wall-clock time, with certified pruning | 68 | 267 |
+| [elfcaps](https://github.com/arielb57/elfcaps) | Rust | Static audit of Linux binaries: which privacy-sensitive APIs they reach, and which bundled library brings each in | 47 | 204 |
+| [includecost](https://github.com/arielb57/includecost) | Rust | Which C/C++ headers would delete the most preprocessed code if removed — the exclusive gain, proven by dominators | 38 | 154 |
+| [magmahunt](https://github.com/arielb57/magmahunt) | Rust | Finite-counterexample search for implications between equational laws over magmas | 56 | 158 |
+| [hostsplit](https://github.com/arielb57/hostsplit) | TypeScript | Differential fuzzer for URLs whose hostname differs depending on who parses them — the shape of an SSRF bypass | 49 | 89 |
+| [homophone](https://github.com/arielb57/homophone) | Rust | Homophonic-substitution cipher solver by simulated annealing that measures its own recovery limits | 40 | 130 |
+| [knockwire](https://github.com/arielb57/knockwire) | Python | Recovers signed interaction networks from knockout experiments and reports which edges the data cannot determine | 56 | 150 |
+| [exactscale](https://github.com/arielb57/exactscale) | Python | The provably optimal scale for each block of quantized LLM weights, and the error the usual heuristics leave behind | 62 | 116 |
+| [codecollapse](https://github.com/arielb57/codecollapse) | Python | How many genuinely different programs a code model samples — what pass@k cannot tell apart | 49 | 149 |
+| [jpegpast](https://github.com/arielb57/jpegpast) | Rust | Tells whether a lossless image was once a JPEG, and recovers the quantization table it was saved with | 32 | 134 |
+| [mqgap](https://github.com/arielb57/mqgap) | TypeScript | Finds viewport widths CSS breakpoints miss or double-cover, fractional pixels included | 44 | 151 |
+| [peekahead](https://github.com/arielb57/peekahead) | Python | **Finance.** Black-box look-ahead bias detector for backtest features: names the leaking column and how far ahead it reads | 52 | 135 |
+| [panfpe](https://github.com/arielb57/panfpe) | TypeScript | **Finance.** NIST FF1 and FF3-1 format-preserving encryption for card tokens, checked against official vectors | 51 | 128 |
 
-All have green CI, all but one have zero runtime dependencies (knockwire uses numpy), and all carry a `.forge.json` manifest recording that this pipeline produced them.
+The projects marked **Finance** were built after the brief gained its finance requirement; the earlier ones predate it.
+
+All have green CI, most have zero runtime dependencies (the numerical Python ones use numpy), and all carry a `.forge.json` manifest recording that this pipeline produced them.
 
 ## The problem
 
