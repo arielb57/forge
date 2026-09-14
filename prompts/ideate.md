@@ -35,8 +35,8 @@ be *worked out*, not merely assembled:
 
 ## Scope discipline
 
-Each project is built in a **single unattended session of roughly 20 minutes**
-by an agent with a filesystem and a test runner, and no network access.
+Each project is built in a **single unattended session of about 45 minutes** by
+an agent with a filesystem, a package manager and a test runner.
 
 That is a hard constraint and it shapes everything:
 
