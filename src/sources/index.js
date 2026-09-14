@@ -1,11 +1,12 @@
 import { hackernews, showhn } from './hackernews.js';
 import { githubRising } from './github.js';
+import { githubFinance } from './github-finance.js';
 import { arxiv } from './arxiv.js';
 import { lobsters } from './lobsters.js';
 import { huggingface } from './huggingface.js';
 import { log } from '../log.js';
 
-export const SOURCES = [hackernews, showhn, githubRising, arxiv, lobsters, huggingface];
+export const SOURCES = [hackernews, showhn, githubRising, githubFinance, arxiv, lobsters, huggingface];
 
 /**
  * Collect from every source in parallel. A source that is down, rate-limited or

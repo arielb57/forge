@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Health check for the six trend collectors.
+ * Health check for the seven trend collectors.
  *
  * Every source is a third-party API that can change its schema without notice.
  * This script fails loudly when a source stops returning usable items, so the

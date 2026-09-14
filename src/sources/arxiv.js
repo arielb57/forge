@@ -1,6 +1,9 @@
 import { getText, extractTags, stripXml } from './http.js';
 
-const CATEGORIES = ['cs.LG', 'cs.AI', 'cs.SE'];
+// q-fin carries the computational-finance, microstructure, risk and pricing
+// feeds. They are the only source here that is finance-native, so they are
+// listed first: the RSS reader takes a fixed slice per category.
+const CATEGORIES = ['q-fin.CP', 'q-fin.TR', 'q-fin.RM', 'q-fin.PR', 'cs.LG', 'cs.SE'];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 

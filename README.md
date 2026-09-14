@@ -7,9 +7,10 @@ $ forge run
 
 ▸ preflight ok — 9.6 GB free, driver claude-cli
 ▸ collecting trend sources
-· hackernews: 40 items   · show-hn: 19 items      · github-rising: 30 items
-· lobsters: 25 items     · huggingface: 20 items  · arxiv: 0 items
-✓ 123 candidate trends from 134 items across 6 sources
+· hackernews: 40 items   · show-hn: 23 items      · github-rising: 30 items
+· github-finance: 59     · lobsters: 25 items     · huggingface: 20 items
+· arxiv: 24 items
+✓ 123 candidate trends from 221 items across 7 sources
 
 · trend 1: Linux Zoom Client Proactively Reads X11 Clipboard      [hackernews, lobsters]
 · trend 2: Hacker News, without AI                                [show-hn]
@@ -51,15 +52,17 @@ Trend feeds tell you what people are talking about. They do not tell you what is
 
 The failure is not a lack of ideas. It is that nothing between the idea and the repository enforces a standard. Nobody checks whether the tests test anything. Nobody checks whether the README explains the approach or just lists the commands. Nobody says *no* to an idea that was never going to be interesting.
 
-forge is that missing layer. It reads six sources, ranks what it finds, turns the survivors into specifications, builds them, and then tries hard to reject its own output.
+forge is that missing layer. It reads seven sources, ranks what it finds, turns the survivors into specifications, builds them, and then tries hard to reject its own output.
 
 ## How it works
 
 Four stages. Each one throws away most of what the previous one produced.
 
-### 1. Collection — six sources, one axis
+### 1. Collection — seven sources, one axis
 
-Hacker News, Show HN, GitHub's fastest-rising new repositories, Lobsters, Hugging Face trending models, and arXiv's cs.LG/cs.AI/cs.SE feeds. Roughly 130 items on a normal day. Sources are collected concurrently and independently: a source that is down, rate-limited or has changed its schema drops out of the run rather than ending it.
+Hacker News, Show HN, GitHub's fastest-rising new repositories, GitHub repositories tagged with finance topics, Lobsters, Hugging Face trending models, and arXiv's q-fin and cs feeds. Roughly 200 items on a normal day.
+
+Two of those are finance-native, and deliberately so: the brief requires every project to connect to finance, and a general front page is a poor place to look for that. The rest still matter — most of the good ideas come from taking a general engineering problem and finding where it bites in a financial system. Sources are collected concurrently and independently: a source that is down, rate-limited or has changed its schema drops out of the run rather than ending it.
 
 Their scores are not comparable. Hugging Face counts downloads in the millions; Lobsters counts upvotes in the dozens. Ranking raw scores puts every Hugging Face model above every discussion on the internet.
 
@@ -77,11 +80,13 @@ The last factor is the point of the whole stage. One front page is one front pag
 
 Recency decays with a 10-day half-life, floored at 0.35: old things get quieter, never silent.
 
-### 3. Ideation — mostly saying no
+### 3. Ideation — a domain, and mostly saying no
 
 The ranked trends go to a model with a brief whose largest section is a list of things that are not projects: wrappers, clones, tutorials, boilerplate, dashboards with no computation underneath, anything whose entire value is a prompt string.
 
 What gets through needs a technical core — something that has to be *worked out*. An algorithm with a measurable property. A parser with a spec to match. A differential tester. A measurement that produces a number nobody had before.
+
+Every project must also connect to finance. That is a constraint on the domain, not a relaxation of the bar: finance is unusually rich in problems with a specification to match or an invariant that has to hold exactly — exchange protocols with conformance suites, day-count conventions that disagree with each other, money arithmetic where the rounding regime decides who is owed a cent. The brief rules out what finance otherwise attracts: trading strategies, price predictors, another backtester, anything needing licensed market data.
 
 The brief insists that a trend is raw material, not a subject. "Everyone is upset that Zoom reads the X11 clipboard" is not a project; what it *tells* you is that clipboard access on Linux is an under-inspected attack surface, and that yields an auditing tool. Ideation is asked for twice as many specs as will be built, is expected to reject trends outright, and every spec is checked against everything shipped in the last 45 days before it can proceed.
 
@@ -221,7 +226,7 @@ Two drivers ship:
 - **The projects are model-generated.** forge decides *what* to build and proves the result works; a language model writes the code. The gate raises the floor a great deal and does not make the output equivalent to hand-written work. Anything published from here should say so.
 - **The gate measures shape, not insight.** It can tell that 96 assertions exist and that none of them compare `1` to `1`. It cannot tell whether they test the interesting cases. Reading the code is not optional, which is why publishing requires a human.
 - **Build scope is capped by the session.** Roughly 20 minutes, offline, no credentials. That rules out anything needing an API key, a database, or a service — a real constraint on what kinds of project can exist here.
-- **arXiv is quiet at weekends** by design (`skipDays`), so Saturday and Sunday runs are five sources, not six.
+- **arXiv is quiet at weekends** by design (`skipDays`), so Saturday and Sunday runs are six sources, not seven.
 - **Trend sources are third-party APIs** and change without notice. `scripts/check-sources.js` runs in CI to catch that.
 - **Deduplication is lexical.** Two projects described in entirely different words will not be caught as duplicates by a Jaccard threshold.
 
