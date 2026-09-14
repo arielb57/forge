@@ -117,7 +117,9 @@ It also has no filesystem search tools, which is not an oversight. `Glob` and `G
 
 The agent may install packages during a build — that is ordinary — but the finished project must run with no network at all.
 
-Commits are split into logical stages (scaffold → core → tests → docs) because that is the order the work happens in. They are never backdated; faking a development history is falsifying a record.
+Commits are split into logical stages (scaffold → core → tests → docs) because that is the order the work happens in, and each message names the modules it actually contains — `Implement wire, state, classify` rather than `Implement core`. Identical commit messages across every repository is the loudest automation tell there is.
+
+They are never backdated. Faking a development history is falsifying a record, and better commit messages for real staged content is not the same thing.
 
 ## Install
 

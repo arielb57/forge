@@ -36,26 +36,53 @@ export async function checkGhAuth() {
  */
 const COMMIT_PLAN = [
   {
-    message: 'Add project scaffold and license',
+    key: 'scaffold',
     paths: ['LICENSE', '.gitignore', 'package.json', 'Cargo.toml', 'pyproject.toml', 'setup.py', 'requirements.txt'],
   },
   {
-    message: 'Implement core',
+    key: 'core',
     paths: ['src', 'lib', 'bin', 'cmd'],
   },
   {
-    message: 'Add test suite',
+    key: 'tests',
     paths: ['test', 'tests', '__tests__', 'spec', 'benches', 'benchmark', 'bench'],
   },
   {
-    message: 'Add documentation and CI',
+    key: 'docs',
     paths: ['README.md', 'docs', '.github', 'examples', 'CONTRIBUTING.md'],
   },
 ];
 
-async function stagedCount(dir) {
-  const out = await git(['diff', '--cached', '--name-only'], dir);
-  return out ? out.split('\n').filter(Boolean).length : 0;
+/**
+ * Commit messages describe what each stage actually contains.
+ *
+ * Identical messages across every repository is the loudest automation tell
+ * there is — ten projects whose history reads "Implement core / Add test
+ * suite" word for word looks like what it is. These are built from the module
+ * names that were staged, so they are specific and, more importantly, true.
+ */
+export function describeStage(key, files, spec) {
+  const modules = [...new Set(
+    files
+      .filter((f) => /\.(rs|ts|tsx|js|mjs|py)$/.test(f))
+      .map((f) => f.split('/').pop().replace(/\.[^.]+$/, ''))
+      .filter((m) => !['index', 'lib', 'main', 'mod', '__init__'].includes(m)),
+  )].slice(0, 5);
+
+  const list = modules.length > 0 ? modules.join(', ') : null;
+
+  switch (key) {
+    case 'scaffold':
+      return `Set up ${spec.name} as a ${spec.language} project`;
+    case 'core':
+      return list ? `Implement ${list}` : `Implement ${spec.name}`;
+    case 'tests':
+      return list ? `Test ${list}` : 'Add the test suite';
+    case 'docs':
+      return 'Document the approach and add CI';
+    default:
+      return `Add ${key}`;
+  }
 }
 
 async function commitInStages(dir, spec) {
@@ -65,13 +92,18 @@ async function commitInStages(dir, spec) {
     const present = stage.paths.filter((p) => existsSync(join(dir, p)));
     if (present.length === 0) continue;
     await git(['add', '--', ...present], dir);
-    if ((await stagedCount(dir)) === 0) continue;
-    await git(['commit', '-q', '-m', stage.message], dir);
+
+    const staged = await git(['diff', '--cached', '--name-only'], dir);
+    const files = staged ? staged.split('\n').filter(Boolean) : [];
+    if (files.length === 0) continue;
+
+    await git(['commit', '-q', '-m', describeStage(stage.key, files, spec)], dir);
   }
 
   // Anything the plan did not name — stray config, extra folders — goes last.
   await git(['add', '-A'], dir);
-  if ((await stagedCount(dir)) > 0) {
+  const remaining = await git(['diff', '--cached', '--name-only'], dir);
+  if (remaining.length > 0) {
     await git(['commit', '-q', '-m', `Complete ${spec.name}`], dir);
   }
 
