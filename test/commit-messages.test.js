@@ -44,3 +44,23 @@ test('the message stays short even for a large stage', () => {
   const many = Array.from({ length: 20 }, (_, i) => `src/module${i}.rs`);
   assert.ok(describeStage('core', many, spec).length < 90);
 });
+
+test('a test stage names what it covers, not the test files', () => {
+  const message = describeStage(
+    'tests',
+    ['src/extractors.test.ts', 'src/normalize.test.ts', 'src/fuzz.test.ts'],
+    { name: 'hostsplit', language: 'typescript' },
+  );
+  assert.match(message, /extractors/);
+  assert.match(message, /normalize/);
+  assert.doesNotMatch(message, /\.test|_test/, 'the ".test" suffix is noise in a commit subject');
+});
+
+test('duplicate coverage targets are not repeated', () => {
+  const message = describeStage(
+    'tests',
+    ['src/parse.test.ts', 'tests/parse.spec.ts'],
+    { name: 'x', language: 'typescript' },
+  );
+  assert.equal(message, 'Test parse');
+});

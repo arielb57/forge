@@ -42,10 +42,14 @@ const COMMIT_PLAN = [
   {
     key: 'core',
     paths: ['src', 'lib', 'bin', 'cmd'],
+    // Tests colocated with the code they cover — src/foo.test.ts — belong to
+    // the test stage, not this one. Without the exclusion they land in the
+    // core commit and the test commit ends up nearly empty.
+    exclude: [':(exclude)*[._]test.*', ':(exclude)*[._]spec.*', ':(exclude)*/tests/*', ':(exclude)*/__tests__/*'],
   },
   {
     key: 'tests',
-    paths: ['test', 'tests', '__tests__', 'spec', 'benches', 'benchmark', 'bench'],
+    paths: ['test', 'tests', '__tests__', 'spec', 'benches', 'benchmark', 'bench', 'src', 'lib'],
   },
   {
     key: 'docs',
@@ -76,8 +80,11 @@ export function describeStage(key, files, spec) {
       return `Set up ${spec.name} as a ${spec.language} project`;
     case 'core':
       return list ? `Implement ${list}` : `Implement ${spec.name}`;
-    case 'tests':
-      return list ? `Test ${list}` : 'Add the test suite';
+    case 'tests': {
+      const covered = modules.map((m) => m.replace(/[._](test|spec|bench)$/i, '')).filter(Boolean);
+      const unique = [...new Set(covered)];
+      return unique.length > 0 ? `Test ${unique.join(', ')}` : 'Add the test suite';
+    }
     case 'docs':
       return 'Document the approach and add CI';
     default:
@@ -91,7 +98,7 @@ async function commitInStages(dir, spec) {
   for (const stage of COMMIT_PLAN) {
     const present = stage.paths.filter((p) => existsSync(join(dir, p)));
     if (present.length === 0) continue;
-    await git(['add', '--', ...present], dir);
+    await git(['add', '--', ...present, ...(stage.exclude || [])], dir);
 
     const staged = await git(['diff', '--cached', '--name-only'], dir);
     const files = staged ? staged.split('\n').filter(Boolean) : [];
