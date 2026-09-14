@@ -6,7 +6,8 @@ import { isRecentlyCovered, load } from './store.js';
 import { log } from './log.js';
 
 const NAME_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-const LANGUAGES = new Set(['typescript', 'python', 'rust']);
+const LANGUAGES_ORDER = ['typescript', 'python', 'rust'];
+const LANGUAGES = new Set(LANGUAGES_ORDER);
 
 function renderTrends(trends) {
   return trends
@@ -51,8 +52,25 @@ export async function ideate(trends, { count = config.projectsPerDay * config.id
 
   const shipped = state.projects
     .slice(0, 60)
-    .map((p) => `- ${p.name}: ${p.tagline}`)
+    .map((p) => `- ${p.name} [${p.language}]: ${p.tagline}`)
     .join('\n');
+
+  // Language balance across recent work. Building one project per run means
+  // there is no batch to spread languages over, and the pipeline had drifted to
+  // five Rust projects out of seven — a portfolio of one language reads as a
+  // narrower range than the work actually shows.
+  const recent = state.projects.slice(0, 12);
+  const counts = LANGUAGES_ORDER.map((lang) => [lang, recent.filter((p) => p.language === lang).length]);
+  const leanest = counts.reduce((a, b) => (b[1] < a[1] ? b : a))[0];
+  const balance = recent.length === 0
+    ? ''
+    : [
+        '## Language balance',
+        '',
+        `Recent projects by language: ${counts.map(([l, n]) => `${l} ${n}`).join(', ')}.`,
+        `Unless a different language genuinely suits the problem better, prefer **${leanest}**.`,
+        'A portfolio of one language reads as a narrower range than the work shows.',
+      ].join('\n');
 
   const prompt = [
     template.replace('{{COUNT}}', String(count)),
@@ -64,6 +82,8 @@ export async function ideate(trends, { count = config.projectsPerDay * config.id
     shipped
       ? `## Already shipped — do not repeat these or anything close to them\n\n${shipped}`
       : '## Already shipped\n\nNothing yet. This is the first batch.',
+    '',
+    balance,
   ].join('\n');
 
   log.step(`ideating ${count} specs from ${trends.length} trends`);
