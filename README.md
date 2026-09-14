@@ -34,10 +34,13 @@ That run is real. What it and its successor produced:
 
 | project | language | what it does | tests | assertions |
 |---|---|---|---:|---:|
-| [xselaudit](https://github.com/arielb57/xselaudit) | TypeScript | Records X11 traffic through a proxy and reports which clients read the clipboard without a paste — classifying each read as user-initiated, proactive, self or unexplained | 131 | 316 |
-| [buildcrit](https://github.com/arielb57/buildcrit) | Rust | Causal profiling for Ninja builds: which edge, if faster, would actually shorten wall-clock time. Prunes with proven upper bounds and certifies when the pruned ranking equals the exhaustive one | 48 | 229 |
+| [xselaudit](https://github.com/arielb57/xselaudit) | TypeScript | Records X11 traffic through a proxy and reports which clients read the clipboard without a paste, classifying each read as user-initiated, proactive, self or unexplained | 131 | 316 |
+| [buildcrit](https://github.com/arielb57/buildcrit) | Rust | Causal profiling for Ninja builds: which edge, if faster, would actually shorten wall-clock time. Prunes with proven upper bounds and certifies when the pruned ranking equals the exhaustive one | 68 | 267 |
+| [elfcaps](https://github.com/arielb57/elfcaps) | Rust | Static audit of Linux binaries: which privacy-sensitive X11, input and capture APIs they can reach, and which bundled library brings each one in | 47 | 204 |
+| [includecost](https://github.com/arielb57/includecost) | Rust | Which C/C++ headers would delete the most preprocessed code if removed — the exclusive gain, proven by dominators, not the inclusive number every other tool reports | 38 | 154 |
+| [magmahunt](https://github.com/arielb57/magmahunt) | Rust | Finite-counterexample search for implications between equational laws over magmas, with an independent naive implementation as the reference every optimisation is checked against | 56 | 158 |
 
-Both have zero runtime dependencies and green CI on Ubuntu. Both carry a `.forge.json` manifest recording that this pipeline produced them.
+All have zero runtime dependencies and green CI on Ubuntu. All carry a `.forge.json` manifest recording that this pipeline produced them.
 
 ## The problem
 
