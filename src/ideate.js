@@ -50,9 +50,19 @@ export async function ideate(trends, { count = config.projectsPerDay * config.id
   const template = readFileSync(join(config.root, 'prompts', 'ideate.md'), 'utf8');
   const state = load();
 
+  // Shipped (or awaiting review) is "do not repeat". Attempted-and-failed is
+  // different: those ideas never became public work, so they may come back —
+  // but only with an approach that answers why the last attempt failed.
+  const exists = (p) => p.status === 'shipped' || p.status === 'review';
   const shipped = state.projects
+    .filter(exists)
     .slice(0, 60)
     .map((p) => `- ${p.name} [${p.language}]: ${p.tagline}`)
+    .join('\n');
+  const attempted = state.projects
+    .filter((p) => p.status === 'rejected' && p.tagline)
+    .slice(0, 20)
+    .map((p) => `- ${p.name}: ${p.tagline}${p.error ? ` (stopped: ${String(p.error).slice(0, 80)})` : ' (failed the quality gate)'}`)
     .join('\n');
 
   // Language balance across recent work. Building one project per run means
@@ -82,6 +92,9 @@ export async function ideate(trends, { count = config.projectsPerDay * config.id
     shipped
       ? `## Already shipped — do not repeat these or anything close to them\n\n${shipped}`
       : '## Already shipped\n\nNothing yet. This is the first batch.',
+    attempted
+      ? `\n## Attempted but never published\n\nThese do not exist publicly. An idea here may be proposed again, but a build that failed the gate should come back with a narrower scope or a different approach, not the same spec.\n\n${attempted}`
+      : '',
     '',
     balance,
   ].join('\n');

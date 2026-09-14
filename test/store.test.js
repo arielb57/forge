@@ -146,3 +146,30 @@ test('a run with no usedTrends field does not break the lookup', async () => {
   rr({ id: 'legacy', passed: 1, built: 1 });
   assert.equal(isTrendUsed('anything at all'), false);
 });
+
+test('an idea that was never published does not block similar ideas', () => {
+  // A spec killed mid-build, or stopped by a usage limit, is not public work.
+  // Treating it as shipped made ideation discard ideas that exist nowhere.
+  reset();
+  recordProject({
+    id: 'k', name: 'clearingcascade',
+    tagline: 'simulates default cascades through a clearing house network',
+    status: STATUS.SPEC,
+  });
+  recordProject({
+    id: 'r', name: 'clearinglimit',
+    tagline: 'simulates default cascades through a clearing house network',
+    status: STATUS.REJECTED, error: 'usage limit reached',
+  });
+  assert.equal(isRecentlyCovered('clearing house default cascade simulator network'), false);
+});
+
+test('a project awaiting review does block duplicates', () => {
+  reset();
+  recordProject({
+    id: 'v', name: 'clearingcascade',
+    tagline: 'simulates default cascades through a clearing house network',
+    status: STATUS.REVIEW,
+  });
+  assert.equal(isRecentlyCovered('clearing house default cascade simulator network'), true);
+});

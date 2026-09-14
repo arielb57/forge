@@ -80,6 +80,9 @@ export function isRecentlyCovered(topic, state = load(), threshold = 0.45) {
   const cutoff = Date.now() - config.topicCooldownDays * 86_400_000;
   const tokens = tokenize(topic);
   return state.projects.some((p) => {
+    // Only work that exists counts. A spec killed mid-build, or one a usage
+    // limit stopped, was blocking every similar idea as though it had shipped.
+    if (!COVERING.has(p.status)) return false;
     if (new Date(p.createdAt).getTime() < cutoff) return false;
     const against = `${p.name} ${p.tagline || ''} ${(p.topics || []).join(' ')}`;
     return similarity(tokens, tokenize(against)) >= threshold;
@@ -133,6 +136,9 @@ export function recordProject(project) {
 export function findProject(idOrName, state = load()) {
   return state.projects.find((p) => p.id === idOrName || p.name === idOrName) || null;
 }
+
+/** Statuses that mean the project exists and a duplicate should be avoided. */
+const COVERING = new Set(['shipped', 'review']);
 
 export const STATUS = Object.freeze({
   SPEC: 'spec',           // ideated, not yet built
