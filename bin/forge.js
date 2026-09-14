@@ -126,8 +126,19 @@ function cmdShow(name) {
 async function cmdGate(name) {
   const project = findProject(name);
   if (!project?.dir) { log.error(`no built project named "${name}"`); process.exitCode = 1; return; }
+
   const gate = await runGate(project.dir, project);
-  recordProject({ id: project.id, gate, status: gate.passed ? STATUS.REVIEW : STATUS.REJECTED });
+
+  // Re-gating something already published must not un-publish it. The status
+  // records how far a project has got, and it has got further than review.
+  const status = project.status === STATUS.SHIPPED
+    ? STATUS.SHIPPED
+    : (gate.passed ? STATUS.REVIEW : STATUS.REJECTED);
+
+  recordProject({ id: project.id, gate, status });
+  if (project.status === STATUS.SHIPPED && !gate.passed) {
+    log.warn(`${name} is published but no longer passes the gate — the repository needs a fix`);
+  }
   console.log(JSON.stringify(gate, null, 2));
 }
 
