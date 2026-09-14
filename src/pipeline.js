@@ -8,6 +8,7 @@ import { runGate } from './gate.js';
 import { writeManifest } from './publish.js';
 import { recordProject, recordRun, STATUS } from './store.js';
 import { preflight } from './preflight.js';
+import { clean } from './clean.js';
 import { config } from './config.js';
 import { log } from './log.js';
 
@@ -128,4 +129,44 @@ export async function runDaily({ target = config.projectsPerDay, dryRun = false 
   }
 
   return { runId, shipped: passed, rejected };
+}
+
+/**
+ * Run the pipeline repeatedly.
+ *
+ * Between iterations it sweeps the build artefacts of anything already
+ * published, because a Rust `target/` is ~350 MB and three unattended runs
+ * will otherwise fill a disk that had room for thirty. Preflight runs at the
+ * start of every iteration, so a loop that runs out of space stops with a
+ * clear reason instead of failing halfway through a build.
+ */
+export async function runRepeatedly({ times = Infinity, target = config.projectsPerDay } = {}) {
+  const results = [];
+
+  for (let i = 1; i <= times; i += 1) {
+    log.blank();
+    log.step(`iteration ${i}${Number.isFinite(times) ? ` of ${times}` : ''}`);
+
+    try {
+      results.push(await runDaily({ target }));
+    } catch (err) {
+      log.error(`iteration ${i} stopped: ${err.message}`);
+      // Preflight failures are conditions a later iteration will hit too.
+      if (/preflight/.test(err.message)) {
+        log.error('not continuing — fix the environment and start the loop again');
+        break;
+      }
+      results.push({ error: err.message });
+    }
+
+    if (i < times) {
+      const { freed } = clean();
+      if (freed > 0) log.info(`swept ${(freed / 1024 ** 2).toFixed(0)} MB before the next iteration`);
+    }
+  }
+
+  const shipped = results.reduce((n, r) => n + (r.shipped?.length || 0), 0);
+  log.blank();
+  log.ok(`${results.length} iteration(s), ${shipped} project(s) ready for review`);
+  return results;
 }

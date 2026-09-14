@@ -2,7 +2,7 @@
 import { existsSync } from 'node:fs';
 import { getTrends } from '../src/trends.js';
 import { ideate } from '../src/ideate.js';
-import { runDaily } from '../src/pipeline.js';
+import { runDaily, runRepeatedly } from '../src/pipeline.js';
 import { runGate } from '../src/gate.js';
 import { resumeBuild } from '../src/build.js';
 import { preflight } from '../src/preflight.js';
@@ -18,6 +18,7 @@ forge — mines daily engineering trends and builds complete, tested projects
   forge trends              Show today's ranked trends and stop
   forge ideate              Show the project specs today's trends produce
   forge run [--target N]    Full pipeline: trends -> specs -> build -> quality gate
+  forge run --repeat N      Run the pipeline N times, sweeping artefacts between
   forge review              List projects waiting for your review
   forge show <name>         Print one project's gate report and file listing
   forge gate <name>         Re-run the quality gate on a built project
@@ -46,6 +47,9 @@ function parseArgs(argv) {
     else if (arg === '--json') flags.json = true;
     else if (arg === '--yes' || arg === '-y') flags.yes = true;
     else if (arg === '--all') flags.all = true;
+    else if (arg === '--repeat') { flags.repeat = Number(argv[i + 1]); i += 1; }
+    else if (arg.startsWith('--repeat=')) flags.repeat = Number(arg.split('=')[1]);
+    else if (arg === '--forever') flags.repeat = Infinity;
     else if (arg === '--target') { flags.target = Number(argv[i + 1]); i += 1; }
     else if (arg.startsWith('--target=')) flags.target = Number(arg.split('=')[1]);
     else positional.push(arg);
@@ -224,7 +228,11 @@ async function main() {
   switch (command) {
     case 'trends': return cmdTrends(flags);
     case 'ideate': return cmdIdeate(flags);
-    case 'run': return void (await runDaily({ target: flags.target || config.projectsPerDay, dryRun: flags.dryRun }));
+    case 'run': {
+      const target = flags.target || config.projectsPerDay;
+      if (flags.repeat) return void (await runRepeatedly({ times: flags.repeat, target }));
+      return void (await runDaily({ target, dryRun: flags.dryRun }));
+    }
     case 'review': return cmdReview(flags);
     case 'show': return cmdShow(positional[1]);
     case 'gate': return cmdGate(positional[1]);

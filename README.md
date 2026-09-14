@@ -133,6 +133,7 @@ forge ideate              # the specs those trends produce, then stop
 forge run                 # the whole pipeline, into the review queue
 forge run --target 1      # build one project instead of three
 forge run --dry-run       # go through the motions, build nothing
+forge run --repeat 5      # five consecutive runs, sweeping artefacts between
 
 forge review              # what is waiting for you
 forge show <name>         # one project's full gate report
