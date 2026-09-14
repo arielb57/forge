@@ -6,6 +6,7 @@ import { runDaily } from '../src/pipeline.js';
 import { runGate } from '../src/gate.js';
 import { resumeBuild } from '../src/build.js';
 import { preflight } from '../src/preflight.js';
+import { clean } from '../src/clean.js';
 import { publishProject, writeManifest } from '../src/publish.js';
 import { load, recordProject, findProject, STATUS } from '../src/store.js';
 import { config } from '../src/config.js';
@@ -22,6 +23,7 @@ forge — mines daily engineering trends and builds complete, tested projects
   forge gate <name>         Re-run the quality gate on a built project
   forge continue <name>     Give an unfinished build another session
   forge ship <name>         Publish a reviewed project to GitHub
+  forge clean [--all]       Delete build artefacts of published projects
   forge doctor              Check this machine can run a build
   forge status              Ledger summary
   forge help
@@ -43,6 +45,7 @@ function parseArgs(argv) {
     if (arg === '--dry-run') flags.dryRun = true;
     else if (arg === '--json') flags.json = true;
     else if (arg === '--yes' || arg === '-y') flags.yes = true;
+    else if (arg === '--all') flags.all = true;
     else if (arg === '--target') { flags.target = Number(argv[i + 1]); i += 1; }
     else if (arg.startsWith('--target=')) flags.target = Number(arg.split('=')[1]);
     else positional.push(arg);
@@ -227,6 +230,7 @@ async function main() {
     case 'gate': return cmdGate(positional[1]);
     case 'continue': return void (await cmdContinue(positional[1]));
     case 'ship': return cmdShip(positional[1], flags);
+    case 'clean': return void clean({ all: flags.all, dryRun: flags.dryRun });
     case 'doctor': return void (await cmdDoctor());
     case 'status': return cmdStatus(flags);
     case 'help': case '--help': case '-h': return void console.log(HELP);

@@ -132,6 +132,7 @@ forge show <name>         # one project's full gate report
 forge gate <name>         # re-run the gate after editing by hand
 forge ship <name>         # publish to GitHub
 
+forge clean               # delete build artefacts of published projects
 forge doctor              # can this machine run a build?
 forge status              # ledger summary
 ```
