@@ -55,7 +55,18 @@ function run(args, { cwd, timeoutMs, input }) {
       settled = true;
       clearTimeout(timer);
       if (code !== 0) {
-        reject(new Error(`claude exited ${code}: ${stderr.slice(-500) || stdout.slice(-500)}`));
+        const detail = stderr.slice(-500) || stdout.slice(-500);
+        // A usage limit is not a failed build: retrying costs nothing but
+        // wall-clock, and the caller needs to stop rather than burn through
+        // every remaining spec in thirty seconds.
+        const limit = detail.match(/(?:session limit|usage limit|rate limit)[^"]*?(?:resets?[^"]*?)?(?=["}]|$)/i);
+        if (limit || /"api_error_status":\s*429/.test(detail)) {
+          const err = new Error(`usage limit reached${limit ? ` — ${limit[0].trim()}` : ''}`);
+          err.rateLimited = true;
+          reject(err);
+          return;
+        }
+        reject(new Error(`claude exited ${code}: ${detail}`));
         return;
       }
       resolve(stdout);

@@ -131,6 +131,20 @@ Commits are split into logical stages (scaffold → core → tests → docs) bec
 
 They are never backdated. Faking a development history is falsifying a record, and better commit messages for real staged content is not the same thing.
 
+## When it stops
+
+Two conditions end a run rather than being retried, because a later attempt
+hits them just as hard:
+
+- **A usage limit.** The driver recognises it, reports when it resets, and the
+  loop stops. Without that, a limit reached on the first iteration spends every
+  remaining one failing in seconds and reports ten attempts that never ran.
+- **A failed preflight** — most often free space. A disk that is full now will
+  still be full in forty minutes.
+
+Everything else (a build that times out, a project the gate rejects) is a
+normal outcome: the run records it and moves to the next spec.
+
 ## Install
 
 Requires Node 20+, and either the [Claude Code CLI](https://claude.com/claude-code) or an `ANTHROPIC_API_KEY`.

@@ -43,6 +43,7 @@ export async function runDaily({ target = config.projectsPerDay, dryRun = false 
 
   const passed = [];
   const rejected = [];
+  let rateLimited = null;
 
   for (const spec of specs) {
     if (passed.length >= target) {
@@ -63,6 +64,12 @@ export async function runDaily({ target = config.projectsPerDay, dryRun = false 
     try {
       build = await buildProject(spec);
     } catch (err) {
+      if (err.rateLimited) {
+        log.error(`stopping the run: ${err.message}`);
+        recordProject({ id, status: STATUS.REJECTED, error: err.message });
+        rateLimited = err;
+        break;
+      }
       log.error(`build failed for ${spec.name}: ${err.message}`);
       // Record the directory even on failure. A timeout usually leaves a nearly
       // complete project on disk, and without the path `forge continue` cannot
@@ -126,6 +133,13 @@ export async function runDaily({ target = config.projectsPerDay, dryRun = false 
   });
 
   log.blank();
+  if (rateLimited) {
+    const err = new Error(rateLimited.message);
+    err.rateLimited = true;
+    log.ok(`run ${runId} stopped after ${durationMin} min — ${passed.length} ready`);
+    if (passed.length > 0) log.info('review them with:  forge review');
+    throw err;
+  }
   log.ok(`run ${runId} finished in ${durationMin} min — ${passed.length} ready, ${rejected.length} rejected`);
   if (passed.length > 0) {
     log.info('review them with:  forge review');
@@ -155,7 +169,13 @@ export async function runRepeatedly({ times = Infinity, target = config.projects
       results.push(await runDaily({ target }));
     } catch (err) {
       log.error(`iteration ${i} stopped: ${err.message}`);
-      // Preflight failures are conditions a later iteration will hit too.
+      // Preflight failures and usage limits are conditions a later iteration
+      // hits too. Without this the loop spends every remaining iteration
+      // failing in seconds and reports ten attempts that never ran.
+      if (err.rateLimited) {
+        log.error('not continuing — start the loop again once the limit resets');
+        break;
+      }
       if (/preflight/.test(err.message)) {
         log.error('not continuing — fix the environment and start the loop again');
         break;
