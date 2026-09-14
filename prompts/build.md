@@ -94,13 +94,20 @@ State what is true and let it stand.
 You have up to about 45 minutes. Pace yourself against that, and prefer a
 smaller thing that is complete to a larger thing that is not.
 
-1. Design the core first. Write it, then test it hard, before anything else.
-2. Build the CLI or public API around the tested core.
-3. **Write the README now**, as soon as the core works and is tested — not at
-   the end. A run that overruns should leave a documented project behind, not
-   an undocumented one. You can refine it later if time allows.
+1. **Write the README first, as a design document.** Problem, approach, the
+   commands you intend to support. Writing down how it works before building
+   it is the cheapest way to find out that it does not, and it means an
+   overrun leaves a documented project rather than an undocumented one.
+   Instructions that say "as soon as the core is done" get deferred until
+   there is no time left; this one does not.
+2. Design and write the core. Test it hard before anything else.
+3. Build the CLI or public API around the tested core.
 4. Benchmark, if the spec calls for one, and record real measured numbers.
-5. Run the full test suite one final time and fix anything red.
+5. **Return to the README** and make every word of it true: replace the
+   commands you intended with the ones that exist, paste real output, fill in
+   the measured numbers, and write the design notes and limitations now that
+   you know what they are.
+6. Run the full test suite one final time and fix anything red.
 
 Declare nothing you have not built. If `Cargo.toml` names two binaries or
 `package.json` names a script, the file it points at must exist before you move
