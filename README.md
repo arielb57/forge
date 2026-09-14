@@ -30,7 +30,14 @@ $ forge run
 ✓ xselaudit is ready for review
 ```
 
-That run is real, and its output is [`arielb57/xselaudit`](https://github.com/arielb57/xselaudit) — an X11 proxy that records a session and reports which clients read your clipboard without you pasting. Zero runtime dependencies, CI green on Ubuntu.
+That run is real. What it and its successor produced:
+
+| project | language | what it does | tests | assertions |
+|---|---|---|---:|---:|
+| [xselaudit](https://github.com/arielb57/xselaudit) | TypeScript | Records X11 traffic through a proxy and reports which clients read the clipboard without a paste — classifying each read as user-initiated, proactive, self or unexplained | 131 | 316 |
+| [buildcrit](https://github.com/arielb57/buildcrit) | Rust | Causal profiling for Ninja builds: which edge, if faster, would actually shorten wall-clock time. Prunes with proven upper bounds and certifies when the pruned ranking equals the exhaustive one | 48 | 229 |
+
+Both have zero runtime dependencies and green CI on Ubuntu. Both carry a `.forge.json` manifest recording that this pipeline produced them.
 
 ## The problem
 
