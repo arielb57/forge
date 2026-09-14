@@ -94,6 +94,44 @@ async function runTests(dir, toolchain) {
 }
 
 /**
+ * Run the project's own linter, when it declares one.
+ *
+ * The gate used to run only the test suite, and passed a project whose CI then
+ * failed on a clippy lint — the generated workflows run `clippy -D warnings`
+ * and `cargo fmt --check`, so a project that fails those is broken on arrival
+ * no matter how green its tests are. Whatever CI enforces, the gate enforces.
+ */
+async function runLint(dir, toolchain) {
+  switch (toolchain) {
+    case 'rust': {
+      const fmt = await run('cargo', ['fmt', '--all', '--check'], dir, 120_000);
+      if (!fmt.ok) return { ok: false, output: fmt.output, tool: 'cargo fmt' };
+      const clippy = await run('cargo', ['clippy', '--all-targets', '--', '-D', 'warnings'], dir, 600_000);
+      return { ok: clippy.ok, output: clippy.output, tool: 'cargo clippy' };
+    }
+    case 'node': {
+      const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+      if (!pkg.scripts?.lint) return { ok: true, skipped: true };
+      const lint = await run('npm', ['run', 'lint'], dir, 300_000);
+      return { ok: lint.ok, output: lint.output, tool: 'npm run lint' };
+    }
+    case 'python': {
+      if (!existsSync(join(dir, 'ruff.toml')) && !existsSync(join(dir, 'pyproject.toml'))) {
+        return { ok: true, skipped: true };
+      }
+      const ruff = await run('uv', ['run', '--quiet', 'ruff', 'check', '.'], dir, 180_000);
+      // No ruff configured is not a failure; a ruff that runs and complains is.
+      if (!ruff.ok && /No such file|not found|unrecognized/i.test(ruff.output)) {
+        return { ok: true, skipped: true };
+      }
+      return { ok: ruff.ok, output: ruff.output, tool: 'ruff check' };
+    }
+    default:
+      return { ok: true, skipped: true };
+  }
+}
+
+/**
  * Aggregate the per-file signals across the whole suite. The judgement itself
  * lives in analyze.js, where it is tested against the exact code shapes it has
  * to catch.
@@ -162,6 +200,18 @@ export async function runGate(dir, spec) {
   const suite = assessTests(dir);
   blocking.push(...judgeTests(suite));
 
+  // Only worth linting a project whose tests already pass; a compile error
+  // would otherwise be reported twice in different words.
+  let lint = { ok: true, skipped: true };
+  if (tests.ok) {
+    log.info(`gate: linting`);
+    lint = await runLint(dir, toolchain);
+    if (!lint.ok) {
+      const tail = lint.output.split('\n').filter(Boolean).slice(-14).join('\n');
+      blocking.push(`${lint.tool} failed — the project's own CI runs this and would reject it:\n${tail}`);
+    }
+  }
+
   const placeholders = findPlaceholders(dir);
   if (placeholders.length > 0) {
     blocking.push(`${placeholders.length} placeholder(s) left in the code:\n  ${placeholders.slice(0, 6).join('\n  ')}`);
@@ -199,6 +249,7 @@ export async function runGate(dir, spec) {
       assertions: suite.assertions,
       readmeWords: readme.words || 0,
       testsPassed: tests.ok,
+      lintPassed: lint.skipped ? null : lint.ok,
     },
     testOutput: tests.output.split('\n').filter(Boolean).slice(-25).join('\n'),
   };
