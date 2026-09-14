@@ -121,6 +121,8 @@ This is deliberate, for two reasons. An unattended process that writes code and 
 
 The build agent runs under a narrow allowlist: it can write files and run package managers and test runners, and nothing else. It has no git access — publishing is forge's job, not the model's.
 
+Each build gets its own sandbox directory and works one level inside it, in `repo/`. That is not belt and braces: an agent benchmarking its own code wrote a scratch file to `../`, and without the extra level that lands beside every other project in the workspace. With it, an escape stays in a directory belonging to that build alone, is reported when it happens, and is never published.
+
 It also has no filesystem search tools, which is not an oversight. `Glob` and `Grep` take an explicit path and honour no workspace boundary; the first real run proved it, when an agent that could not find a TypeScript compiler went looking across the whole disk and started reading an unrelated private project. A project being built from an empty directory has nothing to search, so removing them costs nothing.
 
 The agent may install packages during a build — that is ordinary — but the finished project must run with no network at all.

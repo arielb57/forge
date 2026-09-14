@@ -61,13 +61,19 @@ export function clean({ all = false, dryRun = false } = {}) {
       continue;
     }
 
+    // Builds are nested one level inside a per-project sandbox; older ones sit
+    // flat in the workspace. Sweep both rather than silently missing half.
+    const roots = [dir, join(dir, 'repo')].filter((r) => existsSync(r));
+
     let projectFreed = 0;
-    for (const artefact of ARTEFACTS) {
-      const path = join(dir, artefact);
-      if (!existsSync(path)) continue;
-      const size = sizeOf(path);
-      projectFreed += size;
-      if (!dryRun) rmSync(path, { recursive: true, force: true });
+    for (const root of roots) {
+      for (const artefact of ARTEFACTS) {
+        const path = join(root, artefact);
+        if (!existsSync(path)) continue;
+        const size = sizeOf(path);
+        projectFreed += size;
+        if (!dryRun) rmSync(path, { recursive: true, force: true });
+      }
     }
 
     if (projectFreed > 0) {

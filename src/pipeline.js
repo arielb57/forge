@@ -67,7 +67,11 @@ export async function runDaily({ target = config.projectsPerDay, dryRun = false 
       // Record the directory even on failure. A timeout usually leaves a nearly
       // complete project on disk, and without the path `forge continue` cannot
       // find the work to finish it.
-      const partial = join(config.workspace, spec.name);
+      // Matches the sandbox layout in build.js; the older flat layout is the
+      // fallback so a partial build from before the change is still findable.
+      const nested = join(config.workspace, spec.name, 'repo');
+      const flat = join(config.workspace, spec.name);
+      const partial = existsSync(nested) ? nested : flat;
       const salvageable = existsSync(partial);
       recordProject({
         id,

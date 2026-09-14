@@ -1,4 +1,4 @@
-import { readFileSync, mkdirSync, existsSync, rmSync } from 'node:fs';
+import { readFileSync, mkdirSync, existsSync, rmSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { config } from './config.js';
 import { getDriver } from './llm/index.js';
@@ -52,11 +52,16 @@ function resumePrompt(spec, blocking) {
  * is inspected by the quality gate before a human ever sees it.
  */
 export async function buildProject(spec, { fresh = true } = {}) {
-  const dir = join(config.workspace, spec.name);
+  // The project sits one level inside its own sandbox directory rather than
+  // directly in the workspace. An agent that writes to `../something` — one
+  // did, dropping a scratch benchmark beside every other project — then lands
+  // in a directory belonging to this build alone, and is swept away with it.
+  const sandbox = join(config.workspace, spec.name);
+  const dir = join(sandbox, 'repo');
 
-  if (fresh && existsSync(dir)) {
-    log.warn(`clearing previous build at ${dir}`);
-    rmSync(dir, { recursive: true, force: true });
+  if (fresh && existsSync(sandbox)) {
+    log.warn(`clearing previous build at ${sandbox}`);
+    rmSync(sandbox, { recursive: true, force: true });
   }
   mkdirSync(dir, { recursive: true });
 
@@ -75,8 +80,15 @@ export async function buildProject(spec, { fresh = true } = {}) {
   const durationMs = Date.now() - started;
   log.ok(`${spec.name} built in ${Math.round(durationMs / 1000)}s${result.turns ? ` (${result.turns} turns)` : ''}`);
 
+  const escaped = readdirSync(sandbox).filter((entry) => entry !== 'repo');
+  if (escaped.length > 0) {
+    log.warn(`${spec.name} wrote outside its project directory: ${escaped.join(', ')} (kept in the sandbox, not published)`);
+  }
+
   return {
     dir,
+    sandbox,
+    escaped,
     durationMs,
     turns: result.turns ?? null,
     costUsd: result.costUsd ?? null,
