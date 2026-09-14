@@ -86,6 +86,30 @@ export function isRecentlyCovered(topic, state = load(), threshold = 0.45) {
   });
 }
 
+/**
+ * Trend titles this pipeline has already turned into specs.
+ *
+ * Front pages move over days, not hours, so two runs an hour apart see almost
+ * the same five trends. Without this, a back-to-back run re-proposes what the
+ * previous one just built, and the only thing standing between that and a
+ * duplicate repository is a name check.
+ */
+export function usedTrendTitles(state = load(), days = 7) {
+  const cutoff = Date.now() - days * 86_400_000;
+  const titles = [];
+  for (const run of state.runs) {
+    if (new Date(run.at).getTime() < cutoff) continue;
+    for (const title of run.usedTrends || []) titles.push(title);
+  }
+  return titles;
+}
+
+/** True when `title` names a trend a recent run already worked from. */
+export function isTrendUsed(title, state = load()) {
+  const tokens = tokenize(title);
+  return usedTrendTitles(state).some((used) => similarity(tokens, tokenize(used)) >= 0.6);
+}
+
 export function recordRun(entry) {
   return update((state) => {
     state.runs.unshift({ id: entry.id, at: new Date().toISOString(), ...entry });

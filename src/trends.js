@@ -1,5 +1,5 @@
 import { collectAll } from './sources/index.js';
-import { tokenize, similarity, isRecentlyCovered, load } from './store.js';
+import { tokenize, similarity, isRecentlyCovered, isTrendUsed, load } from './store.js';
 import { log } from './log.js';
 import { config } from './config.js';
 
@@ -114,6 +114,10 @@ export async function getTrends({ limit = config.trendsPerDay, skipDedup = false
   const fresh = skipDedup
     ? ranked
     : ranked.filter((t) => {
+        if (isTrendUsed(t.title, state)) {
+          log.info(`skipping "${t.title.slice(0, 60)}" — a recent run already worked from it`);
+          return false;
+        }
         if (isRecentlyCovered(t.title, state)) {
           log.info(`skipping "${t.title.slice(0, 60)}" — too close to something already shipped`);
           return false;

@@ -107,6 +107,9 @@ export async function runDaily({ target = config.projectsPerDay, dryRun = false 
   recordRun({
     id: runId,
     trends: trends.length,
+    // Kept so the next run looks further down the ranking instead of
+    // re-proposing today's front page.
+    usedTrends: trends.map((t) => t.title),
     totalItems,
     sources: health,
     // Kept so a failed run can be diagnosed later without guessing what the

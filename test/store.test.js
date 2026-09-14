@@ -110,3 +110,39 @@ test('a write is atomic: no temp file is left behind', () => {
   recordProject({ id: 'z', name: 'gamma' });
   assert.ok(!readdirSync(scratch).includes('ledger.json.tmp'));
 });
+
+/* --- trend reuse across runs ---------------------------------------------- */
+
+test('a trend a recent run worked from is reported as used', async () => {
+  const { recordRun: rr, isTrendUsed } = await import('../src/store.js');
+  reset();
+  rr({ id: 'r1', usedTrends: ['Linux Zoom Client Proactively Reads X11 Clipboard'] });
+  assert.equal(isTrendUsed('Linux Zoom client proactively reads the X11 clipboard'), true);
+});
+
+test('an unrelated trend is not reported as used', async () => {
+  const { recordRun: rr, isTrendUsed } = await import('../src/store.js');
+  reset();
+  rr({ id: 'r1', usedTrends: ['Linux Zoom Client Proactively Reads X11 Clipboard'] });
+  assert.equal(isTrendUsed('A new garbage collector lands in OCaml'), false);
+});
+
+test('trend reuse expires, so a story can come back weeks later', async () => {
+  const { isTrendUsed } = await import('../src/store.js');
+  reset();
+  const state = load();
+  state.runs.push({
+    id: 'old',
+    at: new Date(Date.now() - 30 * 86_400_000).toISOString(),
+    usedTrends: ['Linux Zoom Client Proactively Reads X11 Clipboard'],
+  });
+  save(state);
+  assert.equal(isTrendUsed('Linux Zoom Client Proactively Reads X11 Clipboard'), false);
+});
+
+test('a run with no usedTrends field does not break the lookup', async () => {
+  const { recordRun: rr, isTrendUsed } = await import('../src/store.js');
+  reset();
+  rr({ id: 'legacy', passed: 1, built: 1 });
+  assert.equal(isTrendUsed('anything at all'), false);
+});
