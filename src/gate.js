@@ -77,14 +77,24 @@ async function runTests(dir, toolchain) {
       return { ...(await run('npm', ['test'], dir)), phase: 'test' };
     }
     case 'python': {
-      // uv is present and fast; fall back to the interpreter's own module runner.
-      const withUv = await run('uv', ['run', '--quiet', 'pytest', '-q'], dir, 420_000);
-      if (withUv.ok) return { ...withUv, phase: 'test' };
-      const direct = await run('python3', ['-m', 'pytest', '-q'], dir, 420_000);
-      if (direct.ok) return { ...direct, phase: 'test' };
-      // Report whichever attempt got furthest rather than the last one blindly.
-      const chosen = withUv.output.length > direct.output.length ? withUv : direct;
-      return { ...chosen, phase: 'test' };
+      // Three ways in, most-declared first. The last one matters: this machine
+      // has no global pytest and `python3 -m pytest` fails outright, so a
+      // project that does not list pytest as a dependency would be rejected
+      // for the harness's missing tooling rather than for anything it did.
+      const attempts = [
+        ['uv', ['run', '--quiet', 'pytest', '-q']],
+        ['python3', ['-m', 'pytest', '-q']],
+        ['uv', ['run', '--quiet', '--with', 'pytest', 'pytest', '-q']],
+      ];
+      let best = null;
+      for (const [command, args] of attempts) {
+        const attempt = await run(command, args, dir, 420_000);
+        if (attempt.ok) return { ...attempt, phase: 'test' };
+        // Keep whichever attempt got furthest rather than the last one blindly:
+        // "no module named pytest" is less informative than a real failure.
+        if (!best || attempt.output.length > best.output.length) best = attempt;
+      }
+      return { ...best, phase: 'test' };
     }
     case 'rust':
       return { ...(await run('cargo', ['test', '--quiet'], dir, 600_000)), phase: 'test' };
@@ -119,9 +129,13 @@ async function runLint(dir, toolchain) {
       if (!existsSync(join(dir, 'ruff.toml')) && !existsSync(join(dir, 'pyproject.toml'))) {
         return { ok: true, skipped: true };
       }
-      const ruff = await run('uv', ['run', '--quiet', 'ruff', 'check', '.'], dir, 180_000);
-      // No ruff configured is not a failure; a ruff that runs and complains is.
-      if (!ruff.ok && /No such file|not found|unrecognized/i.test(ruff.output)) {
+      // `--with ruff` so a project that configures ruff but does not vendor it
+      // is still linted, rather than silently skipped.
+      let ruff = await run('uv', ['run', '--quiet', 'ruff', 'check', '.'], dir, 180_000);
+      if (!ruff.ok && /not found|No such file|unrecognized/i.test(ruff.output)) {
+        ruff = await run('uv', ['run', '--quiet', '--with', 'ruff', 'ruff', 'check', '.'], dir, 240_000);
+      }
+      if (!ruff.ok && /not found|No such file|unrecognized/i.test(ruff.output)) {
         return { ok: true, skipped: true };
       }
       return { ok: ruff.ok, output: ruff.output, tool: 'ruff check' };

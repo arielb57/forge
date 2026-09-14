@@ -9,8 +9,15 @@
 /** Test-case declarations across the three toolchains forge builds for. */
 const CASE_RE = /\b(?:it|test|describe)\s*[(`]|^\s*def\s+test_\w+|#\[test\]/gm;
 
-/** Assertion calls. Deliberately broad: under-counting weakens the gate. */
-const ASSERTION_RE = /\b(?:assert\w*|expect|should)\s*[(!.]/g;
+/**
+ * Assertion sites. Deliberately broad: under-counting weakens the gate.
+ *
+ * The second alternative is Python's statement form. Requiring a bracket after
+ * `assert` matched `assert.equal(...)` and `assert_eq!(...)` but never
+ * `assert x == y`, so every Python project scored zero assertions and was
+ * rejected however well it was tested.
+ */
+const ASSERTION_RE = /\b(?:assert\w*\s*[(!.]|assert\s+[^\s;{(]|expect\s*[(.]|should\s*[(.]|pytest\.raises\s*\(|assertRaises\s*\()/g;
 
 /**
  * An assertion whose arguments are all literals — `assertEqual(1, 1)`,

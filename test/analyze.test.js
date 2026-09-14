@@ -159,3 +159,60 @@ test('does not count a hash inside a code block as a heading', () => {
   const r = assessReadmeText('# Real heading\n\n```bash\n#!/bin/sh\n# a comment\n```\n');
   assert.equal(r.headings, 2, 'known limitation: fenced blocks are not excluded');
 });
+
+/* --- Python assertion forms ------------------------------------------------
+   Python writes `assert x == y` with no bracket. Requiring one scored every
+   Python project at zero assertions, which the gate rejects outright.
+   --------------------------------------------------------------------------- */
+
+test('counts the bare Python assert statement', () => {
+  const source = 'def test_adds():\n    assert add(2, 3) == 5\n    assert add(0, 0) == 0';
+  assert.equal(countTestSignals(source).assertions, 2);
+});
+
+test('counts a Python assert carrying a message', () => {
+  assert.equal(countTestSignals('assert total == 5, "addition is broken"').assertions, 1);
+});
+
+test('counts pytest.raises and unittest assertRaises', () => {
+  assert.equal(countTestSignals('with pytest.raises(ValueError):\n    parse("")').assertions, 1);
+  assert.equal(countTestSignals('self.assertRaises(KeyError, lookup, "missing")').assertions, 1);
+});
+
+test('does not count the word assert in prose or identifiers', () => {
+  assert.equal(countTestSignals('// we assert; nothing here').assertions, 0);
+  assert.equal(countTestSignals('const asserted = true;').assertions, 0);
+});
+
+test('a real Python suite clears the gate thresholds', () => {
+  const source = `
+def test_parses_a_header():
+    assert parse("a: 1")["a"] == 1
+    assert parse("a: 1")["valid"] is True
+
+def test_rejects_truncated():
+    with pytest.raises(ValueError):
+        parse("a:")
+
+def test_round_trips():
+    assert dumps(parse(SAMPLE)) == SAMPLE
+    assert len(parse(SAMPLE)) == 3
+
+def test_handles_unicode():
+    assert parse("k: café")["k"] == "café"
+    assert len(parse("k: café")) == 1
+`;
+  const counts = countTestSignals(source);
+  assert.equal(counts.cases, 4);
+  assert.equal(counts.assertions, 7);
+  assert.equal(counts.trivial, 0);
+  assert.deepEqual(judgeTests({ ...counts, files: 1 }), [], 'a real Python suite must not be rejected');
+});
+
+test('a token Python suite is still rejected', () => {
+  // The thresholds exist for this shape, and Python must not get a pass on it
+  // just because its assertions are statements rather than calls.
+  const source = 'def test_it_works():\n    assert True\n\ndef test_also():\n    assert 1 == 1';
+  const counts = countTestSignals(source);
+  assert.ok(judgeTests({ ...counts, files: 1 }).length > 0);
+});
