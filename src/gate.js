@@ -225,10 +225,23 @@ async function runEntryPoint(dir, toolchain) {
       break;
     }
     case 'python': {
+      // A packaged CLI declares itself in [project.scripts], not as a
+      // __main__.py — looking only for the latter reported "entry point not
+      // checked" on a project that had a perfectly good one.
+      const pyproject = join(dir, 'pyproject.toml');
+      const script = existsSync(pyproject)
+        ? (readFileSync(pyproject, 'utf8').match(/\[project\.scripts\][^[]*?^\s*([A-Za-z0-9_-]+)\s*=/m) || [])[1]
+        : null;
+
+      if (script) {
+        attempt = await run('uv', ['run', '--quiet', '--with-editable', '.', script, '--help'], dir, 240_000);
+        break;
+      }
+
       const pkg = readdirSync(dir, { withFileTypes: true })
         .filter((e) => e.isDirectory() && existsSync(join(dir, e.name, '__main__.py')))
         .map((e) => e.name)[0];
-      if (!pkg) return { ok: true, skipped: 'no __main__.py' };
+      if (!pkg) return { ok: true, skipped: 'no console script or __main__.py' };
       attempt = await run('python3', ['-m', pkg, '--help'], dir, 60_000);
       break;
     }
