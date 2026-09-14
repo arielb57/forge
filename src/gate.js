@@ -137,21 +137,22 @@ async function runLint(dir, toolchain) {
  * to catch.
  */
 function assessTests(dir) {
-  const files = walk(dir).filter((f) => {
-    const name = f.rel.toLowerCase();
-    return (
-      SOURCE_EXTENSIONS.has(extname(f.rel)) &&
-      (name.includes('test') || name.includes('spec') || name.startsWith('tests/'))
-    );
-  });
+  // Every source file is scanned, not just ones named like tests. Rust puts
+  // unit tests in `#[cfg(test)] mod tests` inside the module they cover, and
+  // filtering by filename missed all of them — one project was credited with
+  // 24 tests when it had 56, which is close enough to the rejection threshold
+  // to fail a well-tested project.
+  const sources = walk(dir).filter((f) => SOURCE_EXTENSIONS.has(extname(f.rel)));
 
-  const total = { cases: 0, assertions: 0, trivial: 0, files: files.length };
-  for (const file of files) {
+  const total = { cases: 0, assertions: 0, trivial: 0, files: 0 };
+  for (const file of sources) {
     let text;
     try {
       text = readFileSync(file.path, 'utf8');
     } catch { continue; }
     const counts = countTestSignals(text);
+    if (counts.cases === 0) continue; // not a file that holds tests
+    total.files += 1;
     total.cases += counts.cases;
     total.assertions += counts.assertions;
     total.trivial += counts.trivial;
