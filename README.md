@@ -98,6 +98,8 @@ Warnings — a missing LICENSE, no CI, no limitations section, a promised benchm
 
 `assertEqual(1, 1)` passing is the single most common way generated code looks finished and is not. The gate counts assertions, then counts how many of them compare two identical literals, and rejects the suite if too many do.
 
+**Does the gate's standard actually hold?** One way to find out is to break a project on purpose and see whether its own suite notices. Widening `xselaudit`'s input window by a factor of a thousand — a change that compiles cleanly and quietly turns every proactive clipboard read into a legitimate-looking one, which is the exact bug that would make the tool useless — failed four tests, among them *"the input window is configurable and inclusive at its edge"* and *"input between the notification and the read (outside the window) makes it unexplained, not proactive"*. That is what the assertion counting is a proxy for.
+
 The lint and entry-point checks were both added after a project got past the gate and should not have. One passed with green tests and then failed its own CI on a clippy lint — the gate ran the test suite and nothing else, while the workflow it had just written ran `clippy -D warnings`. Whatever CI enforces, the gate now enforces first. The other gap was simpler: nothing ever ran the program. A library whose tests pass while its CLI panics on startup is worse than one that fails loudly, because it looks finished.
 
 ## Nothing publishes itself
