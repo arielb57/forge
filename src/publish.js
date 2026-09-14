@@ -81,7 +81,11 @@ export function describeStage(key, files, spec) {
     case 'core':
       return list ? `Implement ${list}` : `Implement ${spec.name}`;
     case 'tests': {
-      const covered = modules.map((m) => m.replace(/[._](test|spec|bench)$/i, '')).filter(Boolean);
+      // Strip both conventions: JS and Rust suffix (parse.test, parse_test),
+      // Python prefixes (test_parse). "Test test_parse" names nothing.
+      const covered = modules
+        .map((m) => m.replace(/[._](test|spec|bench)$/i, '').replace(/^(test|bench)_/i, ''))
+        .filter(Boolean);
       const unique = [...new Set(covered)];
       return unique.length > 0 ? `Test ${unique.join(', ')}` : 'Add the test suite';
     }

@@ -64,3 +64,12 @@ test('duplicate coverage targets are not repeated', () => {
   );
   assert.equal(message, 'Test parse');
 });
+
+test('Python test_ prefixes are stripped from a test stage message', () => {
+  const message = describeStage(
+    'tests',
+    ['tests/test_core.py', 'tests/test_cli.py', 'tests/test_benchmark.py'],
+    { name: 'peekahead', language: 'python' },
+  );
+  assert.equal(message, 'Test core, cli, benchmark');
+});
