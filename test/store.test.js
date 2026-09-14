@@ -161,7 +161,8 @@ test('an idea that was never published does not block similar ideas', () => {
     tagline: 'simulates default cascades through a clearing house network',
     status: STATUS.REJECTED, error: 'usage limit reached',
   });
-  assert.equal(isRecentlyCovered('clearing house default cascade simulator network'), false);
+  const probe = 'clearingcascade simulates default cascades through a clearing house network';
+  assert.equal(isRecentlyCovered(probe), false, 'identical text must still not count when nothing was published');
 });
 
 test('a project awaiting review does block duplicates', () => {
@@ -171,5 +172,6 @@ test('a project awaiting review does block duplicates', () => {
     tagline: 'simulates default cascades through a clearing house network',
     status: STATUS.REVIEW,
   });
-  assert.equal(isRecentlyCovered('clearing house default cascade simulator network'), true);
+  const probe = 'clearingcascade simulates default cascades through a clearing house network';
+  assert.equal(isRecentlyCovered(probe), true);
 });
