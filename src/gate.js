@@ -178,6 +178,60 @@ function assessReadme(dir) {
   return { exists: true, ...assessReadmeText(readFileSync(path, 'utf8')) };
 }
 
+/**
+ * Actually run the thing.
+ *
+ * The brief requires an entry point that runs and does something visible, and
+ * the gate checked everything except that. A project whose library tests pass
+ * while its CLI panics on startup is worse than one that fails loudly: it
+ * looks finished.
+ *
+ * `--help` is the one invocation every CLI should survive with no arguments,
+ * no files and no state. Exit codes vary by convention, so the check is for a
+ * crash, not for a particular status.
+ */
+async function runEntryPoint(dir, toolchain) {
+  const CRASH = /panicked at|Segmentation fault|Traceback \(most recent call last\)|^\s*at .*\n\s*at /m;
+
+  let attempt;
+  switch (toolchain) {
+    case 'node': {
+      const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+      const entry = typeof pkg.bin === 'string' ? pkg.bin : Object.values(pkg.bin || {})[0];
+      if (!entry || !existsSync(join(dir, entry))) return { ok: true, skipped: 'no bin entry declared' };
+      attempt = await run('node', [entry, '--help'], dir, 60_000);
+      break;
+    }
+    case 'rust': {
+      const manifest = readFileSync(join(dir, 'Cargo.toml'), 'utf8');
+      const named = manifest.match(/\[\[bin\]\][\s\S]*?name\s*=\s*"([^"]+)"/);
+      const args = named ? ['run', '--quiet', '--bin', named[1], '--', '--help'] : ['run', '--quiet', '--', '--help'];
+      attempt = await run('cargo', args, dir, 300_000);
+      break;
+    }
+    case 'python': {
+      const pkg = readdirSync(dir, { withFileTypes: true })
+        .filter((e) => e.isDirectory() && existsSync(join(dir, e.name, '__main__.py')))
+        .map((e) => e.name)[0];
+      if (!pkg) return { ok: true, skipped: 'no __main__.py' };
+      attempt = await run('python3', ['-m', pkg, '--help'], dir, 60_000);
+      break;
+    }
+    default:
+      return { ok: true, skipped: 'unknown toolchain' };
+  }
+
+  if (CRASH.test(attempt.output)) {
+    return { ok: false, output: attempt.output, reason: 'crashed' };
+  }
+  // A CLI that prints nothing at all on --help has no usable entry point,
+  // whatever its exit status says.
+  if (attempt.output.trim().length === 0) {
+    return { ok: false, output: '(no output)', reason: 'printed nothing' };
+  }
+  return { ok: true, output: attempt.output };
+}
+
 export async function runGate(dir, spec) {
   const blocking = [];
   const warnings = [];
@@ -209,6 +263,18 @@ export async function runGate(dir, spec) {
     if (!lint.ok) {
       const tail = lint.output.split('\n').filter(Boolean).slice(-14).join('\n');
       blocking.push(`${lint.tool} failed — the project's own CI runs this and would reject it:\n${tail}`);
+    }
+  }
+
+  let entry = { ok: true, skipped: 'tests did not pass' };
+  if (tests.ok) {
+    log.info('gate: running the entry point');
+    entry = await runEntryPoint(dir, toolchain);
+    if (!entry.ok) {
+      const tail = String(entry.output).split('\n').filter(Boolean).slice(-10).join('\n');
+      blocking.push(`the entry point ${entry.reason} on --help:\n${tail}`);
+    } else if (entry.skipped) {
+      warnings.push(`entry point not checked: ${entry.skipped}`);
     }
   }
 
@@ -250,6 +316,7 @@ export async function runGate(dir, spec) {
       readmeWords: readme.words || 0,
       testsPassed: tests.ok,
       lintPassed: lint.skipped ? null : lint.ok,
+      entryPointRuns: entry.skipped ? null : entry.ok,
     },
     testOutput: tests.output.split('\n').filter(Boolean).slice(-25).join('\n'),
   };

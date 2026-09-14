@@ -88,6 +88,8 @@ The gate is why this is not a repository mill. It runs after every build and blo
 | Test suite | The standard runner fails, or times out |
 | Test substance | Fewer than 3 cases, or fewer than 6 assertions |
 | Test honesty | ≥30% of assertions compare a literal to itself |
+| Lint | The project's own linter fails — `cargo fmt` and `clippy -D warnings`, `npm run lint`, `ruff` |
+| Entry point | The CLI crashes on `--help`, or prints nothing at all |
 | Placeholders | Any `TODO`, `FIXME`, `NotImplementedError`, `todo!()`, `unimplemented!()` |
 | README depth | Under 250 words, no code block, or never explains the approach |
 | Substance | Fewer than 2 source files |
@@ -95,6 +97,8 @@ The gate is why this is not a repository mill. It runs after every build and blo
 Warnings — a missing LICENSE, no CI, no limitations section, a promised benchmark that never appeared — do not block, but they travel with the project into review so a human sees them.
 
 `assertEqual(1, 1)` passing is the single most common way generated code looks finished and is not. The gate counts assertions, then counts how many of them compare two identical literals, and rejects the suite if too many do.
+
+The lint and entry-point checks were both added after a project got past the gate and should not have. One passed with green tests and then failed its own CI on a clippy lint — the gate ran the test suite and nothing else, while the workflow it had just written ran `clippy -D warnings`. Whatever CI enforces, the gate now enforces first. The other gap was simpler: nothing ever ran the program. A library whose tests pass while its CLI panics on startup is worse than one that fails loudly, because it looks finished.
 
 ## Nothing publishes itself
 
