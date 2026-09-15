@@ -1,6 +1,7 @@
 import { join, resolve } from 'node:path';
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { totalmem, cpus } from 'node:os';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 
@@ -74,6 +75,19 @@ function loadOverrides() {
 }
 
 const overrides = loadOverrides();
+
+/**
+ * Cap Cargo's parallelism for everything forge starts — the build agent's own
+ * `cargo test` and the gate's. By default Cargo runs one rustc per core, each
+ * several hundred MB, and on an 8 GB machine already hosting other Claude
+ * sessions that got a whole production loop killed for lack of memory in the
+ * middle of a Rust build. Set before any child process is spawned, so both the
+ * agent and the gate inherit it. An explicit CARGO_BUILD_JOBS still wins.
+ */
+if (!process.env.CARGO_BUILD_JOBS) {
+  const gb = totalmem() / 1024 ** 3;
+  process.env.CARGO_BUILD_JOBS = String(overrides.cargoJobs ?? (gb <= 8 ? 2 : gb <= 16 ? 4 : cpus().length));
+}
 
 // The review gate is a safety property, not a preference: a config file cannot
 // switch it off. Removing it means editing this file, deliberately.

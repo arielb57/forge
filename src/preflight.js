@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { statfsSync, mkdirSync } from 'node:fs';
+import { totalmem } from 'node:os';
 import { config } from './config.js';
 import { log } from './log.js';
 
@@ -33,6 +34,15 @@ async function has(command, args = ['--version']) {
   }
 }
 
+function memoryWarnings() {
+  const gb = totalmem() / 1024 ** 3;
+  if (gb > 8) return [];
+  return [
+    `${gb.toFixed(0)} GB of RAM — Rust builds are capped at CARGO_BUILD_JOBS=${process.env.CARGO_BUILD_JOBS}; ` +
+      'close other heavy applications, since running out of memory kills the whole loop',
+  ];
+}
+
 export async function preflight({ requirePublisher = false } = {}) {
   const problems = [];
   const warnings = [];
@@ -48,6 +58,10 @@ export async function preflight({ requirePublisher = false } = {}) {
   } else if (free < COMFORTABLE_FREE_GB) {
     warnings.push(`${free.toFixed(1)} GB free — enough for a run or two, not for a week of them`);
   }
+
+  // Memory is a warning, not a stop: macOS reports "free" pages very
+  // conservatively, so a hard threshold would refuse runs that would succeed.
+  warnings.push(...memoryWarnings());
 
   const [major] = process.versions.node.split('.').map(Number);
   if (major < 20) problems.push(`Node ${process.versions.node} is too old — forge needs 20 or newer`);
