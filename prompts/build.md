@@ -93,6 +93,14 @@ State what is true and let it stand.
 - If you declare a minimum language version (`rust-version`, `engines.node`,
   `requires-python`), give CI a job that actually checks it. An untested
   minimum is a claim, not a fact.
+- **Give every CI job a `timeout-minutes`**, a few times its normal duration.
+  Without one, a hang runs silently for six hours before anyone sees it.
+- **Bound shrinking in expensive property tests.** proptest, fast-check and
+  Hypothesis shrink a failing case with little or no limit by default. When
+  each case runs a brute-force oracle, a single failure can shrink for hours
+  and look exactly like a hang. Cap it (`max_shrink_time` in proptest,
+  `endOnFailure`/`numRuns` in fast-check, `deadline`/`max_examples` in
+  Hypothesis) so a failure is reported, with its input, in minutes.
 - Inline comments only where the code is genuinely non-obvious: explain *why*,
   never *what*. Do not narrate the code.
 
