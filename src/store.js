@@ -133,6 +133,32 @@ export function recordProject(project) {
   });
 }
 
+/**
+ * Builds that were stopped from outside — the process killed, not failed — and
+ * left work on disk worth resuming.
+ *
+ * A killed process runs no catch block, so it records nothing: the project
+ * stays at `spec` with whatever directory was noted when the build began.
+ * Usage-limit stops are included too. Gate rejections are not: resuming the
+ * same spec after the gate refused it would just produce the same refusal.
+ */
+export function findInterrupted(state = load(), hasWork = () => true) {
+  const shippedNames = new Set(
+    state.projects.filter((p) => p.status === STATUS.SHIPPED || p.status === STATUS.REVIEW).map((p) => p.name),
+  );
+  const seen = new Set();
+  return state.projects
+    .filter((p) => {
+      if (!p.dir || shippedNames.has(p.name) || seen.has(p.name)) return false;
+      const killed = p.status === STATUS.SPEC;
+      const limited = p.status === STATUS.REJECTED && /usage limit/i.test(String(p.error || ''));
+      if (!(killed || limited) || !hasWork(p.dir)) return false;
+      seen.add(p.name);
+      return true;
+    })
+    .reverse(); // oldest first: finish what was started earliest
+}
+
 export function findProject(idOrName, state = load()) {
   return state.projects.find((p) => p.id === idOrName || p.name === idOrName) || null;
 }

@@ -9,7 +9,7 @@ process.env.FORGE_DATA_DIR = scratch;
 
 const { test, after } = await import('node:test');
 const assert = (await import('node:assert/strict')).default;
-const { load, save, recordProject, recordRun, findProject, isRecentlyCovered, STATUS } =
+const { load, save, recordProject, recordRun, findProject, isRecentlyCovered, findInterrupted, STATUS } =
   await import('../src/store.js');
 
 after(() => rmSync(scratch, { recursive: true, force: true }));
@@ -174,4 +174,51 @@ test('a project awaiting review does block duplicates', () => {
   });
   const probe = 'clearingcascade simulates default cascades through a clearing house network';
   assert.equal(isRecentlyCovered(probe), true);
+});
+
+
+/* --- resuming interrupted builds ------------------------------------------- */
+
+test('a build killed mid-way is found for resumption', () => {
+  // A killed process records nothing after the build starts, so the project is
+  // left at spec with the directory noted at start.
+  reset();
+  recordProject({ id: 'k', name: 'tiercliff', status: STATUS.SPEC, dir: '/ws/tiercliff/repo' });
+  assert.deepEqual(findInterrupted(load()).map((p) => p.name), ['tiercliff']);
+});
+
+test('a spec that never started building is not an interrupted build', () => {
+  reset();
+  recordProject({ id: 's', name: 'neverbuilt', status: STATUS.SPEC });
+  assert.deepEqual(findInterrupted(load()), []);
+});
+
+test('a usage-limit stop is resumable, a gate rejection is not', () => {
+  reset();
+  recordProject({ id: 'l', name: 'limited', status: STATUS.REJECTED, error: 'usage limit reached', dir: '/ws/l' });
+  recordProject({ id: 'g', name: 'gated', status: STATUS.REJECTED, error: 'README is 40 words', dir: '/ws/g' });
+  assert.deepEqual(findInterrupted(load()).map((p) => p.name), ['limited']);
+});
+
+test('nothing already published or awaiting review is resumed', () => {
+  // An old killed attempt of a project that later shipped under a new run
+  // must not be rebuilt over the published one.
+  reset();
+  recordProject({ id: 'old', name: 'ddbreach', status: STATUS.SPEC, dir: '/ws/ddbreach/repo' });
+  recordProject({ id: 'new', name: 'ddbreach', status: STATUS.SHIPPED, dir: '/ws/ddbreach/repo' });
+  assert.deepEqual(findInterrupted(load()), []);
+});
+
+test('an interrupted build with an empty directory is skipped', () => {
+  reset();
+  recordProject({ id: 'e', name: 'empty', status: STATUS.SPEC, dir: '/ws/empty/repo' });
+  assert.deepEqual(findInterrupted(load(), () => false), []);
+});
+
+test('interrupted builds come back oldest first, each name once', () => {
+  reset();
+  recordProject({ id: 'a1', name: 'alpha', status: STATUS.SPEC, dir: '/ws/alpha/repo' });
+  recordProject({ id: 'b1', name: 'beta', status: STATUS.SPEC, dir: '/ws/beta/repo' });
+  recordProject({ id: 'a2', name: 'alpha', status: STATUS.SPEC, dir: '/ws/alpha/repo' });
+  assert.deepEqual(findInterrupted(load()).map((p) => p.name), ['beta', 'alpha']);
 });

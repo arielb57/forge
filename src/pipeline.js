@@ -1,12 +1,12 @@
 import { randomUUID } from 'node:crypto';
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { getTrends } from './trends.js';
 import { ideate } from './ideate.js';
-import { buildProject } from './build.js';
+import { buildProject, resumeBuild } from './build.js';
 import { runGate } from './gate.js';
 import { writeManifest } from './publish.js';
-import { recordProject, recordRun, STATUS } from './store.js';
+import { recordProject, recordRun, findInterrupted, STATUS } from './store.js';
 import { preflight } from './preflight.js';
 import { clean } from './clean.js';
 import { config } from './config.js';
@@ -27,6 +27,40 @@ export async function runDaily({ target = config.projectsPerDay, dryRun = false 
   // with an ENOSPC from inside npm that nobody will read until tomorrow.
   const environment = await preflight();
 
+  // Finish interrupted work before starting new work. A build killed from
+  // outside has already been paid for; resuming it costs a fraction of a fresh
+  // build and skips ideation entirely.
+  const resumed = [];
+  if (!dryRun) {
+    const hasWork = (dir) => existsSync(dir) && readdirSync(dir).length > 0;
+    for (const project of findInterrupted(undefined, hasWork)) {
+      if (resumed.length >= target) break;
+      log.step(`resuming interrupted build ${project.name}`);
+      try {
+        await resumeBuild(project, project.dir, project.gate?.blocking);
+      } catch (err) {
+        if (err.rateLimited) throw err;
+        log.error(`could not resume ${project.name}: ${err.message}`);
+        recordProject({ id: project.id, status: STATUS.REJECTED, error: `resume failed: ${err.message}` });
+        continue;
+      }
+      const gate = await runGate(project.dir, project);
+      if (gate.passed) {
+        writeManifest(project.dir, project, gate);
+        recordProject({ id: project.id, status: STATUS.REVIEW, gate });
+        resumed.push(project.name);
+        log.ok(`${project.name} is ready for review`);
+      } else {
+        recordProject({ id: project.id, status: STATUS.REJECTED, gate });
+      }
+    }
+    if (resumed.length >= target) {
+      log.ok(`target reached by resuming ${resumed.join(', ')} — no new ideation this run`);
+      recordRun({ id: runId, trends: 0, built: resumed.length, passed: resumed.length, note: 'resumed interrupted builds' });
+      return { runId, shipped: resumed.map((name) => ({ spec: { name } })), rejected: [] };
+    }
+  }
+
   const { trends, health, totalItems } = await getTrends();
   if (trends.length === 0) {
     log.warn('no fresh trends today — everything on the front pages is already covered');
@@ -46,7 +80,7 @@ export async function runDaily({ target = config.projectsPerDay, dryRun = false 
   let rateLimited = null;
 
   for (const spec of specs) {
-    if (passed.length >= target) {
+    if (passed.length + resumed.length >= target) {
       log.info(`target of ${target} reached — not building ${spec.name}`);
       break;
     }
@@ -59,6 +93,11 @@ export async function runDaily({ target = config.projectsPerDay, dryRun = false 
       passed.push({ id, spec, dryRun: true });
       continue;
     }
+
+    // Note the directory before the build starts. If the process is killed
+    // mid-build nothing else gets recorded, and this is what lets the next run
+    // find the work and resume it.
+    recordProject({ id, dir: join(config.workspace, spec.name, 'repo') });
 
     let build;
     try {
