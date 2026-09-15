@@ -1,4 +1,4 @@
-import { readFileSync, existsSync, readdirSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync, rmSync } from 'node:fs';
 import { join, extname, relative } from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -77,21 +77,39 @@ async function runTests(dir, toolchain) {
       return { ...(await run('npm', ['test'], dir)), phase: 'test' };
     }
     case 'python': {
-      // Three ways in, most-declared first. The last one matters: this machine
-      // has no global pytest and `python3 -m pytest` fails outright, so a
-      // project that does not list pytest as a dependency would be rejected
-      // for the harness's missing tooling rather than for anything it did.
+      // Test dependencies conventionally live in an extra — `dev` or `test` —
+      // which `uv run` does not install unless asked. A project whose CI runs
+      // `pip install -e ".[dev]"` and whose tests import hypothesis was being
+      // rejected here with ModuleNotFoundError, for the gate's omission.
+      const pyproject = join(dir, 'pyproject.toml');
+      const text = existsSync(pyproject) ? readFileSync(pyproject, 'utf8') : '';
+      const extrasBlock = (text.match(/\[project\.optional-dependencies\]([\s\S]*?)(?:\n\[|$)/) || [])[1] || '';
+      const extras = ['test', 'tests', 'dev'].filter((name) => new RegExp(`^\\s*${name}\\s*=`, 'm').test(extrasBlock));
+      const extraArgs = extras.flatMap((name) => ['--extra', name]);
+
       const attempts = [
+        ...(extras.length ? [['uv', ['run', '--quiet', ...extraArgs, '--with', 'pytest', 'pytest', '-q']]] : []),
         ['uv', ['run', '--quiet', 'pytest', '-q']],
         ['python3', ['-m', 'pytest', '-q']],
         ['uv', ['run', '--quiet', '--with', 'pytest', 'pytest', '-q']],
       ];
+
       let best = null;
-      for (const [command, args] of attempts) {
+      let rebuiltVenv = false;
+      for (let i = 0; i < attempts.length; i += 1) {
+        const [command, args] = attempts[i];
         const attempt = await run(command, args, dir, 420_000);
         if (attempt.ok) return { ...attempt, phase: 'test' };
-        // Keep whichever attempt got furthest rather than the last one blindly:
-        // "no module named pytest" is less informative than a real failure.
+
+        // A build killed while creating its virtualenv leaves one uv refuses
+        // to use ("Broken Python installation"), and every later attempt goes
+        // through the same broken environment. Recreate it once and retry.
+        if (!rebuiltVenv && /Broken Python installation|Can't use Python at/.test(attempt.output)) {
+          rebuiltVenv = true;
+          rmSync(join(dir, '.venv'), { recursive: true, force: true });
+          i -= 1;
+          continue;
+        }
         if (!best || attempt.output.length > best.output.length) best = attempt;
       }
       return { ...best, phase: 'test' };
