@@ -76,7 +76,10 @@ export function assessReadmeText(text) {
   return {
     words: text.split(/\s+/).filter(Boolean).length,
     headings: (text.match(/^#{1,3}\s+\S.*$/gm) || []).length,
-    hasCodeBlock: /```/.test(text),
+    // Fenced blocks (``` or ~~~) and indented ones: CommonMark treats a line
+    // indented four spaces after a blank line as code. Checking only for
+    // backticks rejected a 2,100-word README full of copyable commands.
+    hasCodeBlock: /```|~~~/.test(text) || /(^|\n)[ \t]*\n( {4}|\t)\S/.test(text),
     // A README that never explains the approach teaches the reader nothing.
     explainsApproach: /how it works|approach|algorithm|architecture|design|implementation|why it/i.test(text),
     hasLimitations: /limitation|not supported|does not|doesn't|caveat|known issue|out of scope/i.test(text),

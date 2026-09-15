@@ -216,3 +216,21 @@ test('a token Python suite is still rejected', () => {
   const counts = countTestSignals(source);
   assert.ok(judgeTests({ ...counts, files: 1 }).length > 0);
 });
+
+/* --- README code blocks ----------------------------------------------------- */
+
+test('an indented code block counts as a code block', () => {
+  // CommonMark: four spaces after a blank line is code. A README using only
+  // this style was rejected as having "no usage a reader can copy".
+  const readme = '# tool\n\n## Install\n\n    cargo install --path .\n    tool check plan.toml\n';
+  assert.equal(assessReadmeText(readme).hasCodeBlock, true);
+});
+
+test('a tilde fence counts as a code block', () => {
+  assert.equal(assessReadmeText('# tool\n\n~~~sh\nnpm test\n~~~\n').hasCodeBlock, true);
+});
+
+test('prose with no code of any kind is still flagged', () => {
+  const readme = '# tool\n\nIt does things.\nIndented continuation of prose.\n';
+  assert.equal(assessReadmeText(readme).hasCodeBlock, false);
+});
