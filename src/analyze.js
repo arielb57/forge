@@ -84,6 +84,9 @@ export function assessReadmeText(text) {
     explainsApproach: /how it works|approach|algorithm|architecture|design|implementation|why it/i.test(text),
     hasLimitations: /limitation|not supported|does not|doesn't|caveat|known issue|out of scope/i.test(text),
     hasUsage: /usage|install|getting started|quick ?start|## run/i.test(text),
+    // The generation process leaking into the deliverable: a published README
+    // citing "the brief" points a stranger at a document they will never see.
+    mentionsBrief: /\bthe brief\b/i.test(text),
   };
 }
 

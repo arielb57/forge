@@ -80,6 +80,11 @@ Required, in this order:
 Write plainly. No marketing voice, no emoji headers, no "🚀 Blazing fast".
 State what is true and let it stand.
 
+The reader has never seen this brief and never will. Do not refer to "the brief",
+"the spec I was given", this session, or any instruction you received. Targets
+and design decisions belong to the project: say "the design target", not "the
+brief".
+
 ## Also required
 
 - `LICENSE` — MIT, copyright 2026 Ariel Belhamou.

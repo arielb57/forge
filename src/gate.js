@@ -337,6 +337,7 @@ export async function runGate(dir, spec) {
     if (!readme.explainsApproach) blocking.push('README never explains how it works');
     if (!readme.hasUsage) warnings.push('README has no clear install/usage section');
     if (!readme.hasLimitations) warnings.push('README states no limitations — reviewers read that section first');
+    if (readme.mentionsBrief) warnings.push('README refers to "the brief" — a document the reader has never seen');
   }
 
   if (!existsSync(join(dir, 'LICENSE'))) warnings.push('no LICENSE file');

@@ -234,3 +234,8 @@ test('prose with no code of any kind is still flagged', () => {
   const readme = '# tool\n\nIt does things.\nIndented continuation of prose.\n';
   assert.equal(assessReadmeText(readme).hasCodeBlock, false);
 });
+
+test('a README citing the internal brief is noticed', () => {
+  assert.equal(assessReadmeText('# x\n\nAgainst the targets in the brief: met.').mentionsBrief, true);
+  assert.equal(assessReadmeText('# x\n\nA brief overview of the design.').mentionsBrief, false);
+});
